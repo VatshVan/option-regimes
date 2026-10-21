@@ -38,7 +38,7 @@ where $Q_t$ denotes option-implied risk-neutral features, $X_t$ denotes observab
         |   Feature Extraction Q_t       |  |  Validation Anchor (Free Cboe) |
         |   - Martin (2017) SVIX         |  |  - Cboe VIX History CSV        |
         |   - Bakshi et al. (2003) QSkew |  |  - Cboe SKEW History CSV       |
-        |   - Term structure slope       |  |  Cross-check: Corr(SVIX,VIX)>0.98
+        |   - Term structure slope       |  |  Cross-check: SVIX vs VIX diagnostic
         +----------------+---------------+  +--------------------------------+
                          |
                          v
@@ -54,7 +54,7 @@ where $Q_t$ denotes option-implied risk-neutral features, $X_t$ denotes observab
 3. **Primary Scope Limitation — Missing Open Interest `[Verified Fact]`:** OptionsDX CSV files **do not contain Open Interest (OI)**. Illiquidity filtering cannot rely on open interest thresholds and must instead enforce strict bid-ask spread constraints ($(Ask - Bid)/Mid \le \tau$), minimum trading volume, and non-zero bid filters.
 4. **Settlement & Timestamp Discrepancy `[Verified Fact]`:** SPX options traditionally traded on Cboe until 16:15 Eastern Time (ET), whereas the cash S&P 500 index (`^GSPC`) stops calculating at 16:00 ET. In addition, standard monthly SPX options are AM-settled (settling against the Friday morning Special Opening Quotation, "SET"), whereas weekly/end-of-month options (SPXW) are PM-settled (settling against the 16:00 ET cash close). OptionsDX does not provide a separate contract root identifier (`SPX` vs `SPXW`). To prevent synthetic arbitrage, the project must extract the implied synthetic forward $F_{t,T}$ directly via put-call parity at each maturity rather than relying on the reported cash index close.
 5. **Precalculated Greeks/IV Must Be Discarded `[Analytical Inference]`:** OptionsDX includes precalculated IV and Greeks, but the underlying pricing model, interest rate curve, and dividend assumptions are completely undocumented. For academic validity matching [Ulrich et al. (2019)](file:///C:/Users/Vatsh%20Van/Desktop/MECH_5-SEM/IE%20612/Project/Papers/ssrn_id3437281_code3012080.pdf) (*Forward-looking P*), the project must independently calculate mid-prices, estimate forward levels, and compute model-free moments (or SVI implied volatility).
-6. **External Validation Anchor `[Verified Fact]`:** Cboe publishes official daily historical time series of the **VIX Index** (`VIX_History.csv`) and **SKEW Index** (`SKEW_History.csv`) for free on its CDN. These provide an external ground-truth validation anchor: model-free implied volatility and risk-neutral skewness extracted from OptionsDX must demonstrate near-perfect correlation ($\rho > 0.98$) with Cboe's official benchmarks.
+6. **External Validation Anchor `[Verified Fact]`:** Cboe publishes official daily historical time series of the **VIX Index** (`VIX_History.csv`) and **SKEW Index** (`SKEW_History.csv`) for free on its CDN. These provide an external ground-truth diagnostic anchor: model-free implied volatility and risk-neutral skewness extracted from OptionsDX are compared against Cboe's official benchmarks as a structural diagnostic (recognizing that Martin SVIX and Cboe VIX are distinct theoretical measures, so no rigid 0.98 correlation threshold is imposed).
 
 ---
 
@@ -251,7 +251,7 @@ While Cboe charges for contract-level option chains, **Cboe publishes its calcul
    The research pipeline can use these official Cboe files as a **zero-cost validation anchor**:
    - Extract $\text{SVIX}_t$ and $\text{QSkew}_t$ from OptionsDX raw chains.
    - Compute the Pearson and Spearman rank correlation against official Cboe VIX and Cboe SKEW.
-   - **Quality Gate Criterion:** If $\text{Corr}(\text{Model-Free IV}, \text{Cboe VIX}) < 0.98$ or $\text{Corr}(\text{Calculated Skew}, \text{Cboe SKEW}) < 0.90$, the cleaning or integration code has a bug and must not proceed to model estimation.
+   - **Quality Gate Criterion (Diagnostic Anchor):** As clarified in `research_protocol.md`, Martin (2017) SVIX and Cboe VIX measure distinct theoretical quantities (simple return variance vs. log-contract variance). The comparison serves as a qualitative structural diagnostic rather than an equivalence test, and no rigid 0.98 correlation or 1-vol-point threshold is imposed.
 
 ---
 

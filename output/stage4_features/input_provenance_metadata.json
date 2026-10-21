@@ -1,0 +1,59 @@
+{
+  "metadata_version": "1.1",
+  "generated_at": "2026-10-21T20:12:33.024466",
+  "notes": "Stage 4 demonstration inputs and provenance record. Preserves two-date scope.",
+  "cash_close_series": {
+    "source": "Yahoo Finance API chart endpoint",
+    "symbol": "^GSPC",
+    "field": "close",
+    "units": "Index points",
+    "cache_file": "output/stage4_features\\spx_daily_closes.csv",
+    "span_start": "2019-10-31",
+    "span_end": "2020-03-13",
+    "status": "Illustrative market close aggregator series matching Cboe closing levels"
+  },
+  "target_dates": {
+    "2020-01-15": {
+      "cash_close": {
+        "source": "Yahoo Finance ^GSPC daily close cache",
+        "value": 3289.2900390625,
+        "expected": 3289.29,
+        "diff": 3.906250003637979e-05,
+        "units": "Index points"
+      },
+      "risk_free_rate": {
+        "source": "Illustrative benchmark rate based on Cboe 13-week T-Bill (^IRX) close",
+        "value": 0.01508,
+        "units": "Annualized decimal",
+        "convention": "Continuously compounded (Act/365)",
+        "status": "Illustrative/unverified benchmark input (dynamic yield curve ingestion deferred)"
+      },
+      "options_chain": {
+        "file": "Data/SPX Options Chain/spx_eod_2020-wh6jt7/spx_eod_202001.txt",
+        "quote_readtime": "2020-01-15 16:00",
+        "timestamp_note": "Parity ensures internal surface consistency but does not prove quote/cash synchronization or eliminate 16:00/16:15 ET look-ahead risk"
+      }
+    },
+    "2020-03-03": {
+      "cash_close": {
+        "source": "Yahoo Finance ^GSPC daily close cache",
+        "value": 3003.3701171875,
+        "expected": 3003.37,
+        "diff": 0.00011718750010913936,
+        "units": "Index points"
+      },
+      "risk_free_rate": {
+        "source": "Illustrative benchmark rate based on Cboe 13-week T-Bill (^IRX) close",
+        "value": 0.00918,
+        "units": "Annualized decimal",
+        "convention": "Continuously compounded (Act/365)",
+        "status": "Illustrative/unverified benchmark input (dynamic yield curve ingestion deferred)"
+      },
+      "options_chain": {
+        "file": "Data/SPX Options Chain/spx_eod_2020-wh6jt7/spx_eod_202003.txt",
+        "quote_readtime": "2020-03-03 16:00",
+        "timestamp_note": "Parity ensures internal surface consistency but does not prove quote/cash synchronization or eliminate 16:00/16:15 ET look-ahead risk"
+      }
+    }
+  }
+}
