@@ -102,6 +102,7 @@ Before any model fitting, inventory filenames/dates and sizes without opening ot
 4. Martin (2017) SVIX calculation: Computed using Martin's forward-normalized formula (unweighted by $1/K^2$, normalized by $F_{t,T}^2$ with standard composite trapezoidal weights). Because retained quotes span a finite strike range without tail extrapolation, the values are discrete finite-grid estimates (yielding 30-day SVIX of **12.00%** on the calm date vs. official VIX 12.42%, and **34.88%** on the stress date vs. official VIX 36.82%). The numerical gaps ($-0.42$ vol pts and $-1.94$ vol pts) are documented strictly as empirical observations on these two dates, without asserting an unverified causal link to skewness or crisis put demand or implying equivalence with Cboe VIX.
 5. **Gate A Verdict: Qualified Pass.** Pilot data-quality checks on the two authorized dates are approved. Work proceeded to Stage 4 (Feature Pipeline Specification). However, full-sample model estimation remains conditioned on completing full 14-year session continuity audits, early strike coverage (2010–2012) checks, and full-sample batch feature extraction across 2010–2021. `Data/SPY Options Chain` (American ETF) and `Data/VIX` (options on VIX) remain excluded from the primary MVP.
 6. **Stage 4 Feature Pipeline Specification (21 October 2026):** Implemented the feature construction pipeline in `src/features/` extracting $Q_t \in \mathbb{R}^5$ ($\text{SVIX}_{30d}$, centered standardized $\text{QSkew}_{30d}$, centered standardized non-excess $\text{QKurt}_{30d}$, $\text{ATM\_IV}_{30d}$, $\text{TermSlope}_{60\_30}$) and $X_t \in \mathbb{R}^6$ ($r_{1d}, r_{5d}, \text{RV}_{5d}, \text{RV}_{20d}, \text{DSemi}_{20d}, \text{DD}_{20d}$). Validated via 4 unit tests and demonstrated on the two authorized dates (`2020-01-15` and `2020-03-03`). Risk-free rates and cash closes are documented as illustrative benchmark inputs with local caching. Output datasets, diagnostics, and provenance metadata are persisted in `output/stage4_features/`. The untouched 2022–2023 test partition remains sealed, no forecasting models or HMMs have been fit, and full-sample continuity and early strike depth checks remain unresolved.
+7. **Stage 5 Modeling Specification (21 October 2026):** Formalized the complete Stage 5 modeling specification in `stage5_modeling_specification.md` and updated `research_protocol.md`. Specified the 6-model comparison ladder ($B0$ unconditioned Gaussian, $B1$ volatility Student-$t$, $B2$ $Q$-only, $B3$ $X$-only, $B4$ combined non-regime baseline, $R1$ matched latent regime challenger), the causal HMM forward filtering recursion ($\pi_t \in \Delta^{K-1}$ with smoothed posteriors and Viterbi states strictly barred), training-only scaler fitting, expanding window 21-session monthly refits, paired Diebold-Mariano test with Newey-West HAC variance, stationary block bootstrap with automatic block length, secondary metrics with Benjamini-Hochberg FDR control, and explicit Gates B, C, D prerequisites. No models were fit, no walk-forward evaluations were executed, and the untouched 2022–2023 test partition remains completely sealed.
 
 **Higher-quality paid fallback:** Cboe DataShop's SPX EOD option products contain NBBO bid/ask and sizes, OHLC, volume, OI and optional calculated IV/Greeks, with historical coverage back to 2010 in its EOD product family. SPX-specific underlying bid/ask/calcs may require an additional Cboe Global Indices license. This is not a free route.
 
@@ -156,45 +157,51 @@ Produce counts by date, contract, expiry, strike and moneyness; missingness heat
 
 ## 7. Models and estimation
 
-### 7.1 Baselines
+### 7.1 Model ladder and architecture specifications
 
-- **B0 Historical unconditional:** training-window empirical return density or simple Gaussian with rolling mean/scale.
-- **B1 Volatility baseline:** conditional location/scale model using trailing realized volatility (e.g. Student-t location-scale or quantile model).
-- **B2 Q-only:** small distribution model using option features only.
-- **B3 X-only:** same class using historical features only.
-- **B4 Combined non-regime (primary comparator):** (Q_t+X_t) to a compact conditional density model. Start with a Student-t location/scale regression or quantile grid; use a small MDN only if its sample-size and numerical behavior are adequate.
+All predictive models are structured in a strict hierarchy to isolate the incremental value of latent regimes:
 
-Keep estimator family, capacity and hyperparameter budget comparable for B4 and regime model. The role of B1–B3 is diagnosis, not to dilute the main comparison.
+- **B0 Historical unconditional:** Stationary expanding Gaussian density $\mathcal{N}(\mu_\tau, \sigma_\tau^2)$ estimated on historical returns through date $\tau$.
+- **B1 Volatility baseline:** Location-scale Student-$t$ distribution with dispersion scaling strictly with trailing realized volatility: $\sigma_t = \alpha_0 + \alpha_1 \text{RV}_{20d,t}$, with $\alpha_0 > 0, \alpha_1 \ge 0, \nu > 2.1$.
+- **B2 Q-only diagnostic:** Location-scale Student-$t$ model conditioned strictly on forward-looking option moments $Q_t \in \mathbb{R}^5$ ($\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_IV}_{30d}, \text{TermSlope}_{60\_30}$).
+- **B3 X-only diagnostic:** Location-scale Student-$t$ model conditioned strictly on historical state features $X_t \in \mathbb{R}^6$ ($r_{1d}, r_{5d}, \text{RV}_{5d}, \text{RV}_{20d}, \text{DSemi}_{20d}, \text{DD}_{20d}$).
+- **B4 Combined non-regime (primary comparator):** Primary architecture is a parametric Student-$t$ location-scale regression conditioned on $[Q_t, X_t] \in \mathbb{R}^{11}$:
+  $$\mu_t = \mathbf{w}_\mu^\top [Q_t, X_t] + b_\mu, \quad \sigma_t = \text{softplus}(\mathbf{w}_\sigma^\top [Q_t, X_t] + b_\sigma) + \sigma_{\min}, \quad \nu = \text{softplus}(w_\nu) + 2.1$$
+  with $\sigma_{\min} = 10^{-4}$. Fallback is a compact 2-component Mixture Density Network (MDN) if multi-modality is established on validation data.
+- **R1 Latent regime challenger (primary hypothesis test):** Matched architecture conditioned on $[Q_t, X_t, \pi_t] \in \mathbb{R}^{11+K}$, where $\pi_t \in \Delta^{K-1}$ is the forward-filtered latent regime probability vector. Shares identical functional form, activation functions, parameter constraints, optimizer, and $\ell_2$ regularization grid as $B4$.
 
-### 7.2 Regime estimation and regime model
+### 7.2 Causal Hidden Markov Model (HMM) filtering
 
-Fit a small Gaussian HMM (start (K=2), validate (K=2,3)) on a pre-declared, low-dimensional state such as standardized lagged return and realized volatility. Fit within each training window only. At each forecast origin use **filtered** probabilities (\pi_{t,k}=P(z_t=k\mid\mathcal F_t)), generated forward using information through (t). Never use smoothed probabilities or full-sample state labels in a backtest.
+Fit a continuous Gaussian HMM with $K \in \{2, 3\}$ latent states on a low-dimensional bivariate emission vector $\mathbf{y}_t = [\widetilde{r}_t, \widetilde{\text{RV}}_{20d,t}]^\top$ (standardized return and 20-day realized volatility).
+- **In-sample fitting:** Estimated strictly on expanding training windows via Baum-Welch EM.
+- **Causal forward filtering:** At each forecast origin $t$, compute forward-filtered probabilities:
+  $$\pi_{t,k} \equiv P(z_t = k \mid \mathbf{y}_1, \dots, \mathbf{y}_t) \propto p(\mathbf{y}_t \mid z_t = k) \sum_{j=1}^K A_{jk} \pi_{t-1,j}$$
+- **Strict anti-leakage rule:** Smoothed probabilities $\gamma_{t,k} \equiv P(z_t = k \mid \mathbf{y}_1, \dots, \mathbf{y}_T)$ and full-sample Viterbi states are strictly prohibited.
+- **$K$-selection:** Conducted on validation split (2020–2021). Requires state occupancy $\ge 5.0\%$ and dwell time $\ge 5$ sessions. Default to parsimonious $K=2$ unless $K=3$ improves validation NLL by $\ge 0.020$ nats.
 
-First regime challenger (**R1**): append filtered probabilities and perhaps one interaction block to the same B4 density estimator. This tests state information while limiting model count. Optional **R2**: mixture of regime-specific predictive densities weighted by filtered probabilities; implement only if R1 is stable and time permits. Compare against a control with current observable volatility/state features, plus a regime-probability ablation/shuffle. If regime definitions change materially across rolling fits or probabilities collapse to one state, report that and drop the regime claim.
+### 7.3 Density validity and training constraints
 
-### 7.3 Density validity
-
-All predictive densities must integrate to one, remain finite and positive at realized values, and respect parameter constraints (positive scales, simplex mixture weights). Use stable log-sum-exp, clipping only with a stated numerical floor. For quantile models enforce monotonic quantiles and clearly identify their evaluation as quantile rather than full-density evidence.
+All predictive densities must integrate to 1.0, remain finite and strictly positive at realized returns, and enforce parameter constraints ($\sigma_m > 10^{-4}$, $\nu_m \ge 2.1$). Use stable log-sum-exp implementations with numerical floors. All feature scalers and imputers are fit strictly on training data $s \le \tau$ and frozen out-of-sample.
 
 ## 8. Evaluation design (leakage-resistant)
 
-1. Sort observations chronologically. Define an initial training segment, a validation segment for model and hyperparameter choice, and a final untouched test segment. Do not randomly split.
-2. Partition observations by complete calendar years (2010–2019 training [~71.4%], 2020–2021 validation [~14.3%], 2022–2023 untouched test [~14.3%]) or reserve the latest contiguous 20% if strict session quotas are mandated. Set exact session dates from actual coverage and report them without assuming nominal counts.
-3. Fit imputation, scaling, feature selection, surface-derived transformations, HMM, and predictive model using only data available by each refit date. Choose refit cadence in advance (monthly is a reasonable MVP).
-4. Next-day target does not overlap. If extending to multi-day targets, purge/embargo overlaps; use block/HAC inference.
-5. Keep the final test out of feature selection, regime-count selection, architecture choice, cost tuning and strategy design. Freeze a dated specification before the test is scored.
+1. Chronological order strictly preserved: Training (2010–2019, 10 years, ~71.4%), Validation (2020–2021, 2 years, ~14.3%), Untouched Test (2022–2023, 2 years, ~14.3%).
+2. The 2022–2023 test partition remains sealed until all model choices, hyperparameters, and feature extraction algorithms are permanently frozen.
+3. Expanding-window walk-forward refit on a monthly cadence (every 21 active trading sessions).
+4. Missing session handling: single-session option gap causally forward-filled ($Q_t \leftarrow Q_{t-1}$); multi-session gaps or missing cash closes omitted from evaluation with diagnostic codes logged.
 
-### Forecast metrics
+### Forecast metrics and statistical inference
 
-- **Primary:** average negative log predictive density (log loss) of realized next-day returns; paired per-date loss difference, B4 minus R1.
-- **Secondary:** CRPS (for densities with reliable numerical integration), PIT histogram and uniformity diagnostics, 50/80/95% interval coverage and width, quantile/pinball loss, tail-event Brier/log scores for fixed thresholds.
-- Report calibration and sharpness together. Lower NLL alone can reward overconfident tails if density numerics or data alignment are faulty.
-- Compare paired forecast losses with a Diebold–Mariano-style test with suitable variance estimation. Add a moving/block bootstrap confidence interval as a robustness summary. State that many close, dependent daily observations reduce effective sample size.
-- Pre-specify a practically meaningful threshold as well as statistical evidence; do not hunt across metrics for a favorable result.
+- **Primary metric:** Out-of-sample Negative Log-Likelihood (NLL) on untouched test data: $\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t=1}^{N_{\text{test}}} \ln \widehat{p}_{t+1}^{(M)}(r_{t+1})$.
+- **Hypothesis test:** Paired Diebold-Mariano test on loss differential $d_t = \ln \widehat{p}_{t+1}^{(R1)}(r_{t+1}) - \ln \widehat{p}_{t+1}^{(B4)}(r_{t+1})$ with Newey-West (1987) HAC variance estimation and automatic bandwidth $L = \lfloor 4 (N_{\text{test}}/100)^{2/9} \rfloor$.
+- **Stationary block bootstrap:** Politis & Romano (1994) bootstrap on $\{d_t\}$ with automatic block-length selection (Politis & White, 2004; Patton et al., 2009) and 2,000 replications to compute 95% confidence intervals.
+- **Secondary diagnostics:** CRPS, PIT histograms, Kolmogorov-Smirnov and Berkowitz (2001) normality tests on $z_t = \Phi^{-1}(u_t)$, central interval coverage (50%, 80%, 95%), tail pinball loss ($\alpha \in \{0.01, 0.05, 0.10, 0.90, 0.95, 0.99\}$).
+- **Multiple comparison control:** Benjamini-Hochberg (1995) FDR control at $q = 0.05$ across secondary metrics.
+- **Significance threshold:** Statistical significance requires one-sided DM $p < 0.05$ and bootstrap CI excluding zero; practical significance requires $\bar{d} \ge 0.010$ nats/day (~2.5 nats/year).
 
 ### Portfolio translation (secondary only)
 
-With one index, use a transparent risk-budget allocation: allocate between cash and the index based on forecast mean and a fixed volatility/tail-risk budget, with bounds such as 0–100% exposure, predetermined turnover cap and rebalancing cadence. Compare cash, buy-and-hold index, fixed-volatility targeting, and the forecast-driven rule. Include a realistic transaction-cost assumption sourced or declared as a range, turnover, drawdown, realized volatility, Sharpe and certainty-equivalent return. Show gross and net results and sensitivity to costs. No leveraged short exposure in MVP. If forecasts do not provide stable expected return estimates, omit mean-seeking allocation and use forecast risk only; disclose the simplification.
+Long-only 1-asset volatility-targeting strategy (cash vs. index) with 15% annualized target, 5 bps transaction costs, and exposure bounded to $[0, 1]$. Strictly secondary and illustrative; cannot rescue a failed density hypothesis.
 
 ## 9. Falsification, ablations and robustness
 
@@ -211,13 +218,14 @@ Core tests, prioritized:
 
 ## 10. One-month work sequence and decision gates
 
-| Week | Work | Deliverable / gate |
+| Phase / Week | Work Description | Deliverable / Gate Status |
 |---|---|---|
-| 1 (days 1–5) | Confirm data permission and obtain representative chain exports; resolve market/universe/horizon; refresh targeted literature search; write frozen protocol and feature dictionary. | **Gate A:** documented adequate data, licence, historical span, fields, and viable option surface. If not met by day 5, pivot to feasible data or redefine scope before coding. |
-| 2 (days 6–12) | Ingest/normalize; align index returns and options; cleaning and quality report; construct the first surface/features and diagnostics. | **Gate B:** enough clean dates and repeatable surface diagnostics. Freeze a dataset snapshot and code version. |
-| 3 (days 13–19) | Implement B0–B4; time splits, validation and primary metrics; assess density validity and calibration. | **Gate C:** B4 yields stable, valid forecasts on chronological validation. If not, simplify to Student-t/quantile forecast. |
-| 4 (days 20–26) | Fit filtered HMM and R1; run core ablations and paired comparisons; finalize test specification; score untouched test once. | **Gate D:** report regime result, including null/negative findings; no retroactive model selection on test. |
-| Final days (27–30) | Optional simple portfolio translation; charts, method limitations, reproducibility and report/presentation. | Complete reproducible submission with data citations and clear feasibility/novelty limits. |
+| **Phase 1 (Week 1)** | Stage 1 Research Protocol, Stage 2 Feasibility Audit, Stage 3 Targeted Quality Check. | **Gate A: Qualified Pass.** 168 monthly SPX files inventoried; 2 pilot dates passed parsing, 16:00 timestamp, forward parity, and Martin SVIX integration. Early strike depth and full session continuity unverified. |
+| **Phase 2 (Week 2)** | Stage 4 Feature Pipeline Specification & Pilot Algorithms, Stage 5 Modeling Specification. | **Stage 5 Complete.** Formally specified 6-model ladder, causal HMM forward filtering, tuning, inference, and stop/go criteria in `stage5_modeling_specification.md`. Models remain unfitted; 2022–2023 test sealed. |
+| **Prerequisite for Model Fitting** | Full 14-year SPX calendar scan ($\le 1.0\%$ missing sessions), early strike coverage check (2010–2012 $\ge 30$ liquid strikes), dynamic rate ingestion (`^IRX`/FRED), batch extraction of $Q_t, X_t$ on 2010–2021. | **Gate B: Calendar Audit & Feature Construction Gate.** Freeze training/validation feature matrices before fitting models. Untouched test partition remains strictly unaccessed. |
+| **Phase 3 (Week 3)** | Implement and fit models B0–B4 on development split (2010–2019); validate density stability, calibration, and HMM persistence on validation split (2020–2021). | **Gate C: Baseline Stability Gate.** Verify finite NLL, $\sigma_t > 10^{-4}, \nu \ge 2.1$, HMM dwell time $\ge 5$ days, occupancy $\ge 5\%$. If MDN unstable, simplify to Student-$t$. |
+| **Phase 4 (Week 4)** | Fit causal HMM and challenger R1 on expanding windows; score frozen models on untouched 2022–2023 test partition ONCE. Execute paired DM test and block bootstrap. | **Gate D: Final Evaluation & Integrity Gate.** Report primary NLL differential $\bar{d}$, DM statistic, bootstrap CI, and secondary diagnostics. Report null findings transparently. |
+| **Final Days** | Optional illustrative portfolio translation; charts, limitations, reproducibility report. | Complete reproducible submission with data citations and clear novelty boundaries. |
 
 Parallel activities: data access request and literature search happen in week 1; implementation cannot assume either is resolved. Reserve final test dates before model iteration where possible.
 

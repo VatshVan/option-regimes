@@ -1,6 +1,6 @@
 {
   "metadata_version": "1.1",
-  "generated_at": "2026-10-21T20:12:33.024466",
+  "generated_at": "2026-10-21T20:30:03.182989",
   "notes": "Stage 4 demonstration inputs and provenance record. Preserves two-date scope.",
   "cash_close_series": {
     "source": "Yahoo Finance API chart endpoint",

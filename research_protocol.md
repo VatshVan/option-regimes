@@ -153,6 +153,8 @@ The feature vector $Q_t$ contains 5 compact forward-looking moments standardized
 
 **Constant-Maturity Standardization:** Features are computed on the two distinct expirations $\tau_1 < 30 < \tau_2$ nearest to 30 calendar days and linearly interpolated to a fixed 30-day tenor ($\tau = 30/365$), eliminating maturity-decay artifacts.
 
+*(Risk-Free Rate Note: In the forward inversion and moment formulas above, $r$ represents the continuously compounded risk-free discount rate corresponding to expiration tenor $\tau$. For the Stage 3 and Stage 4 demonstration runs, illustrative benchmark rates based on Cboe 13-week T-Bill (`^IRX`) closes were utilized; automated continuous daily yield curve ingestion matching each option tenor has not been integrated into the repository and remains unverified for the full sample).*
+
 ### 3.2 Historical Market State Feature Set ($X_t$)
 The vector $X_t$ captures observable recent return dynamics, realized volatility, and drawdown:
 
@@ -238,67 +240,84 @@ All raw options data must pass explicit quality gates before entering numerical 
 To isolate the incremental value of latent regimes without confounding from arbitrary model complexity, all predictive models are organized in a strict hierarchical ladder:
 
 ```
-+-----------------------------------------------------------------------------------+
-|                           Model Comparison Ladder                                 |
-+-----------------------------------------------------------------------------------+
-| [B0] Historical Unconditional Benchmark                                            |
-|      - Empirical density or rolling Gaussian over training window               |
-+-----------------------------------------------------------------------------------+
-| [B1] Trailing Volatility Location-Scale Diagnostic                                |
-|      - Student-t density conditioned strictly on RV_20d                           |
-+-----------------------------------------------------------------------------------+
-| [B2] Q-Only Distribution Model                                                    |
-|      - Density conditioned strictly on option-implied moments Q_t                 |
-+-----------------------------------------------------------------------------------+
-| [B3] X-Only Distribution Model                                                    |
-|      - Density conditioned strictly on historical state X_t                       |
-+-----------------------------------------------------------------------------------+
-| [B4] Combined Non-Regime Density Baseline (PRIMARY COMPARATOR)                   |
-|      - Student-t location-scale / compact MDN conditioned on [Q_t, X_t]           |
-+-----------------------------------------------------------------------------------+
-| [R1] Matched Regime-Augmented Density Challenger (PRIMARY HYPOTHESIS TEST)       |
-|      - Identical B4 architecture augmented with filtered HMM probabilities \pi_t  |
-|      - \pi_t = P(z_t = k | F_t) inferred forward via causal HMM filter            |
-+-----------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+|                                Model Comparison Ladder                                  |
++-----------------------------------------------------------------------------------------+
+| [B0] Historical Unconditional Benchmark                                                 |
+|      - Unconditioned expanding Gaussian density N(mu_train, sigma_train^2)              |
++-----------------------------------------------------------------------------------------+
+| [B1] Trailing Volatility Location-Scale Benchmark                                       |
+|      - Location-scale Student-t conditioned strictly on RV_20d                           |
++-----------------------------------------------------------------------------------------+
+| [B2] Q-Only Distribution Model                                                          |
+|      - Conditional density conditioned strictly on option-implied features Q_t          |
++-----------------------------------------------------------------------------------------+
+| [B3] X-Only Distribution Model                                                          |
+|      - Conditional density conditioned strictly on historical state features X_t        |
++-----------------------------------------------------------------------------------------+
+| [B4] Combined Non-Regime Density Baseline (PRIMARY COMPARATOR)                          |
+|      - Student-t location-scale / compact MDN conditioned on [Q_t, X_t] in R^11         |
++-----------------------------------------------------------------------------------------+
+| [R1] Matched Latent Regime Density Challenger (PRIMARY HYPOTHESIS TEST)                 |
+|      - Identical B4 architecture conditioned on [Q_t, X_t, \pi_t] in R^{11+K}            |
+|      - \pi_t in Delta^{K-1} is forward-filtered causal regime probability vector         |
++-----------------------------------------------------------------------------------------+
 ```
 
 ### 5.1 Diagnostic Benchmarks
-* **Model B0 (Historical Unconditional):**
-  A stationary benchmark: Gaussian distribution fitted on all historical returns up to date $t$:
-  $$\widehat{p}_{t+1}(r) = \mathcal{N}\big(r; \mu_{\text{train}}, \sigma^2_{\text{train}}\big)$$
-* **Model B1 (Trailing Volatility Baseline):**
+* **Model B0 (Historical Unconditional Benchmark):**
+  A stationary benchmark representing the unconditional distribution of daily returns:
+  $$\widehat{p}_{t+1}^{(B0)}(r) = \frac{1}{\sqrt{2\pi \sigma_{\tau}^2}} \exp\left(-\frac{(r - \mu_{\tau})^2}{2\sigma_{\tau}^2}\right)$$
+  where $\mu_{\tau} = \frac{1}{|\mathcal{T}_{\tau}|} \sum_{s \in \mathcal{T}_{\tau}} r_s$ and $\sigma_{\tau}^2 = \frac{1}{|\mathcal{T}_{\tau}|-1} \sum_{s \in \mathcal{T}_{\tau}} (r_s - \mu_{\tau})^2$ are estimated over the expanding in-sample window.
+* **Model B1 (Trailing Volatility Location-Scale Benchmark):**
   A conditional location-scale Student-$t$ model whose dispersion scales with recent 20-day realized volatility:
-  $$\widehat{p}_{t+1}(r) = \frac{1}{\sigma_t} f_{\nu}\left(\frac{r - \mu}{\sigma_t}\right), \quad \sigma_t = \alpha_0 + \alpha_1 \text{RV}_{20,t}$$
-  Degrees of freedom $\nu$, intercept $\alpha_0$, and coefficient $\alpha_1$ estimated via maximum likelihood on training data.
+  $$\widehat{p}_{t+1}^{(B1)}(r) = \frac{1}{\sigma_t} f_{\nu}\left(\frac{r - \mu}{\sigma_t}\right), \quad \sigma_t = \alpha_0 + \alpha_1 \text{RV}_{20d,t}$$
+  where $f_\nu(z) = \frac{\Gamma((\nu+1)/2)}{\Gamma(\nu/2)\sqrt{\pi \nu}} (1 + z^2/\nu)^{-(\nu+1)/2}$ is the standard Student-$t$ density. Degrees of freedom $\nu$, intercept $\alpha_0$, and coefficient $\alpha_1$ are estimated via maximum likelihood on $\mathcal{T}_{\tau}$ with constraints $\alpha_0 > 0, \alpha_1 \ge 0, \nu > 2.1$.
 * **Model B2 ($Q$-Only Diagnostic):**
-  Distribution model mapping $Q_t \to \widehat{p}_{t+1}(r)$. Verifies whether option moments alone contain sufficient predictive signal.
+  Distribution model mapping $Q_t \to \widehat{p}_{t+1}(r)$ via location-scale Student-$t$ regression:
+  $$\mu_t = \mathbf{w}_\mu^\top Q_t + b_\mu, \quad \sigma_t = \text{softplus}(\mathbf{w}_\sigma^\top Q_t + b_\sigma) + \sigma_{\min}, \quad \nu = \text{softplus}(w_\nu) + 2.1$$
+  Verifies whether option moments alone contain sufficient predictive signal.
 * **Model B3 ($X$-Only Diagnostic):**
-  Distribution model mapping $X_t \to \widehat{p}_{t+1}(r)$. Verifies the predictive power of trailing historical returns and volatility in isolation.
+  Distribution model mapping $X_t \to \widehat{p}_{t+1}(r)$ via location-scale Student-$t$ regression:
+  $$\mu_t = \mathbf{w}_\mu^\top X_t + b_\mu, \quad \sigma_t = \text{softplus}(\mathbf{w}_\sigma^\top X_t + b_\sigma) + \sigma_{\min}, \quad \nu = \text{softplus}(w_\nu) + 2.1$$
+  Verifies the predictive power of trailing historical returns and volatility in isolation.
 
 ### 5.2 Primary Comparator: Combined Non-Regime Baseline ($B4$)
-* **Architecture:** A parametric Student-$t$ location-scale regression or compact Mixture Density Network (MDN) with a small number of components ($M \in \{2, 3\}$):
-  $$\widehat{p}_{t+1}(r \mid Q_t, X_t) = \sum_{m=1}^M w_m(Q_t, X_t) \, \mathcal{T}\big(r; \mu_m(Q_t, X_t), \sigma_m(Q_t, X_t), \nu_m\big)$$
-* **Input Vector:** Concatenated vector $[Q_t, X_t] \in \mathbb{R}^{11}$.
+* **Architecture:** Parametric Student-$t$ location-scale regression (primary) or compact Mixture Density Network (MDN) with a small number of components ($M \in \{2, 3\}$):
+  * **Primary Formulation (Student-$t$ Location-Scale):**
+    $$\mu_t = \mathbf{w}_\mu^\top [Q_t, X_t] + b_\mu$$
+    $$\sigma_t = \text{softplus}(\mathbf{w}_\sigma^\top [Q_t, X_t] + b_\sigma) + \sigma_{\min}$$
+    $$\nu = \text{softplus}(w_\nu) + 2.1$$
+  * **Fallback Formulation (Compact 2-Component MDN):**
+    $$\widehat{p}_{t+1}^{(B4)}(r \mid Q_t, X_t) = \sum_{m=1}^M w_m(Q_t, X_t) \, \frac{1}{\sigma_m(Q_t, X_t)} f_{\nu_m}\left(\frac{r - \mu_m(Q_t, X_t)}{\sigma_m(Q_t, X_t)}\right)$$
+* **Input Vector:** Concatenated vector $\mathbf{u}_t = [Q_t, X_t] \in \mathbb{R}^{11}$.
 * **Parameter Constraints:**
-  * Component weights satisfy the simplex constraint: $\sum_{m=1}^M w_m = 1, w_m > 0$ (enforced via Softmax).
-  * Scale parameters are strictly positive: $\sigma_m > 0$ (enforced via Softplus or exponential activation with numerical floor $\sigma_{\min} = 10^{-4}$).
-  * Degrees of freedom constrained: $\nu_m \ge 2.1$ to guarantee finite variance.
-* **Tuning:** Hidden units, regularizer ($\ell_2$ penalty), and learning rate tuned strictly via chronological cross-validation on the development/validation window.
+  * Component weights satisfy simplex constraint: $\sum_{m=1}^M w_m = 1, w_m > 0$ (enforced via Softmax).
+  * Scale parameters are strictly positive: $\sigma_m > 0$ (enforced via Softplus activation with numerical floor $\sigma_{\min} = 10^{-4}$).
+  * Degrees of freedom constrained: $\nu_m \ge 2.1$ to guarantee finite second moments.
+* **Objective Function and Tuning:** Trained by minimizing regularized Negative Log-Likelihood (NLL) on $\mathcal{T}_{\tau}$:
+  $$\mathcal{L}_{B4}(\boldsymbol{\theta}) = -\sum_{s \in \mathcal{T}_{\tau}} \ln \widehat{p}_{s+1}^{(B4)}(r_{s+1} \mid \mathbf{u}_s) + \lambda \|\boldsymbol{\theta}\|_2^2$$
+  where $\lambda \ge 0$ is tuned strictly via chronological cross-validation on the development/validation window.
 
 ### 5.3 Primary Challenger: Regime-Augmented Model ($R1$)
 * **Regime Inference Model (HMM):**
-  * A continuous-state Gaussian Hidden Markov Model with $K \in \{2, 3\}$ latent regimes.
-  * *Emission Variables:* Low-dimensional historical state: standardized 1-day return $r_t$ and realized volatility $\text{RV}_{20,t}$. (Option moments may be evaluated as emission features on validation data only if regime stability is preserved).
-  * *In-Sample Estimation:* Parameters (transition matrix $\mathbf{A}$, initial state probabilities $\boldsymbol{\rho}$, and emission parameters $\boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k$) are estimated strictly within the in-sample training window $\mathcal{T}_{\text{train}}$ via Baum–Welch Expectation-Maximization.
-* **Filtered Posterior Probabilities ($\pi_t$):**
+  * Continuous Gaussian Hidden Markov Model with $K \in \{2, 3\}$ latent regimes.
+  * *Emission Variables:* Low-dimensional historical state: standardized 1-day return $\widetilde{r}_t$ and realized volatility $\widetilde{\text{RV}}_{20d,t}$:
+    $$\mathbf{y}_t = \begin{bmatrix} (r_t - \bar{r}_\tau) / s_{r,\tau} \\ (\text{RV}_{20d,t} - \overline{\text{RV}}_\tau) / s_{\text{RV},\tau} \end{bmatrix} \in \mathbb{R}^2, \quad \mathbf{y}_t \mid z_t = k \sim \mathcal{N}\big(\boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\big)$$
+    with diagonal covariance $\boldsymbol{\Sigma}_k = \text{diag}(\sigma_{k,1}^2, \sigma_{k,2}^2)$.
+  * *In-Sample Estimation:* Parameters (transition matrix $\mathbf{A}$, initial state probabilities $\boldsymbol{\rho}$, and emission parameters $\boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k$) are estimated strictly within the in-sample training window $\mathcal{T}_{\tau}$ via Baum–Welch Expectation-Maximization.
+* **Causal Forward Filtered Posterior Probabilities ($\pi_t$):**
   For each out-of-sample date $t$, the forward filter computes the posterior probability of being in regime $k$ using only information available through date $t$:
-  $$\pi_{t,k} \equiv P(z_t = k \mid r_1, \dots, r_t, \text{RV}_1, \dots, \text{RV}_t)$$
-  $$\pi_{t,k} \propto p(\mathbf{x}_t \mid z_t = k) \sum_{j=1}^K A_{j,k} \, \pi_{t-1,j}$$
-  **STRICT RULE:** Never use smoothed probabilities $P(z_t = k \mid r_1, \dots, r_T)$ that utilize future observations $s > t$.
+  $$\alpha_1(k) = \rho_k \, \mathcal{N}\big(\mathbf{y}_1; \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\big)$$
+  $$\alpha_t(k) = \mathcal{N}\big(\mathbf{y}_t; \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\big) \sum_{j=1}^K A_{jk} \, \alpha_{t-1}(j)$$
+  $$\pi_{t,k} \equiv P(z_t = k \mid \mathbf{y}_1, \dots, \mathbf{y}_t) = \frac{\alpha_t(k)}{\sum_{j=1}^K \alpha_t(j)}$$
+  **STRICT ANTI-LEAKAGE RULE:** Never use smoothed probabilities $\gamma_{t,k} \equiv P(z_t = k \mid \mathbf{y}_1, \dots, \mathbf{y}_T)$ or full-sample Viterbi paths that utilize future observations $s > t$.
+* **Regime Count ($K$) Selection Criteria:**
+  Evaluated on validation split (2020–2021). Every regime $k$ must exhibit empirical occupancy $\ge 5.0\%$ and expected dwell time $\mathbb{E}[D_k] = 1/(1 - A_{kk}) \ge 5$ trading sessions. Default to parsimonious $K=2$; $K=3$ selected only if all states satisfy occupancy/persistence and validation NLL improves by $\Delta \text{NLL}_{\text{val}} \ge 0.020$ nats.
 * **Challenger Specification ($R1$):**
   The filtered probability vector $\pi_t \in \Delta^{K-1}$ is appended to the feature vector of model $B4$:
-  $$\text{Input to } R1: \quad \big[ Q_t, X_t, \pi_t \big] \in \mathbb{R}^{11 + K}$$
-  $R1$ shares the identical functional form, parameter constraints, and optimization budget as $B4$. This ensures that any measured performance difference is strictly attributable to the information content of $\pi_t$.
+  $$\text{Input to } R1: \quad \mathbf{v}_t = \big[ Q_t, X_t, \pi_t \big] \in \mathbb{R}^{11 + K}$$
+  $R1$ shares the **identical functional form, parameter constraints, optimization algorithm, and regularization budget** as $B4$. This ensures that any measured performance difference is strictly attributable to the incremental information content of $\pi_t$.
 
 ---
 
@@ -332,18 +351,28 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
 * **Cadence Default:** **Monthly (every 21 trading sessions)**.
 * **Execution Rules per Refit Date $\tau$:**
   1. Expand training set to include all sessions $s \le \tau$.
-  2. Re-fit feature scalers on the expanded training set.
-  3. Re-estimate HMM transition and emission parameters.
-  4. Re-fit predictive density models $B4$ and $R1$.
-  5. For the subsequent 21 sessions, compute out-of-sample forward filtered probabilities $\pi_t$ daily and generate 1-day density forecasts $\widehat{p}_{t+1}(r)$.
+  2. Re-fit feature scalers (medians, IQRs) strictly on the expanded training set $\mathcal{T}_{\tau}$.
+  3. Re-estimate HMM transition and emission parameters on $\mathcal{T}_{\tau}$.
+  4. Re-fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ on scaled $\mathcal{T}_{\tau}$.
+  5. For the subsequent 21 sessions $t \in (\tau, \tau + 21]$:
+     - Apply frozen scalers from date $\tau$ to features $Q_t, X_t$.
+     - Compute causal forward filtered probabilities $\pi_t$ using frozen HMM parameters.
+     - Generate 1-day density forecasts $\widehat{p}_{t+1}(r)$ using frozen predictive models.
+     - Observe realized return $r_{t+1}$ after session $t+1$ close and record out-of-sample log-likelihood.
   6. Store forecast distributions, loss scores, and computation logs permanently.
 
-### 6.3 Performance Metrics
+### 6.3 Missing Sessions and Missing Feature Handling
+* **Trading Day Alignment:** Target $r_{t+1} = \ln(S_{t+1}/S_t)$ is evaluated across consecutive active exchange trading sessions.
+* **Isolated Option Gap ($\le 1$ Trading Day):** If the option chain at date $t$ is missing but the cash market traded, option features are causally forward-filled ($Q_t \leftarrow Q_{t-1}$).
+* **Multi-Session Gap ($> 1$ Consecutive Trading Days):** If option chain data is unavailable for $>1$ consecutive session, forecast origin $t$ is omitted from out-of-sample loss aggregation and flagged `ERR_CONSECUTIVE_OPTION_GAP`. No backward-filling or interpolation using future data is permitted.
+* **Missing Cash Close:** If $S_t$ or $S_{t+1}$ is missing, the session is excluded from scoring and flagged `ERR_MISSING_CASH_CLOSE`.
+
+### 6.4 Performance Metrics
 
 #### Primary Metric
 * **Out-of-Sample Negative Log-Likelihood (NLL):**
-  $$\mathcal{L} = -\frac{1}{N_{\text{test}}} \sum_{t=1}^{N_{\text{test}}} \log \widehat{p}_{t+1}(r_{t+1})$$
-  Paired loss differential: $d_t = \log \widehat{p}_{t+1}^{(R1)}(r_{t+1}) - \log \widehat{p}_{t+1}^{(B4)}(r_{t+1})$. A positive mean differential ($\bar{d} > 0$) signifies that $R1$ assigns higher likelihood to realized physical returns.
+  $$\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t=1}^{N_{\text{test}}} \ln \widehat{p}_{t+1}^{(M)}(r_{t+1})$$
+  Paired loss differential: $d_t = \ln \widehat{p}_{t+1}^{(R1)}(r_{t+1}) - \ln \widehat{p}_{t+1}^{(B4)}(r_{t+1})$. A positive mean differential ($\bar{d} > 0$) signifies that $R1$ assigns higher likelihood (lower log loss) to realized physical returns.
 
 #### Secondary Forecast Metrics
 1. **Continuous Ranked Probability Score (CRPS):**
@@ -353,21 +382,26 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
    $$u_t = \widehat{F}_{t+1}(r_{t+1}) = \int_{-\infty}^{r_{t+1}} \widehat{p}_{t+1}(s) \, ds$$
    Under perfect calibration, $u_t \sim \text{Uniform}[0, 1]$. Evaluated via:
    * Visual inspection of 10-bin PIT histogram.
-   * Kolmogorov–Smirnov test and Berkowitz (2001) likelihood ratio test of normality on $\Phi^{-1}(u_t)$.
+   * Kolmogorov–Smirnov test and Berkowitz (2001) likelihood ratio test of normality on $z_t = \Phi^{-1}(u_t)$.
 3. **Empirical Coverage & Interval Width:**
    Evaluate coverage of central predictive intervals: $50\%, 80\%$, and $95\%$. Compute empirical violation rates and mean interval width (sharpness).
 4. **Quantile / Pinball Loss at Tails:**
    Quantile loss evaluated at $\alpha \in \{0.01, 0.05, 0.10, 0.90, 0.95, 0.99\}$ to verify left-tail (crash) and right-tail calibration.
 
-### 6.4 Statistical Uncertainty and Hypothesis Testing
+### 6.5 Statistical Uncertainty and Hypothesis Testing
 * **Paired Diebold–Mariano Test:**
   Compute the DM test statistic on the loss differential series $d_t$:
-  $$\text{DM} = \frac{\bar{d}}{\sqrt{\widehat{\text{Var}}(\bar{d}) / N_{\text{test}}}}$$
-  Because the target return is 1-day non-overlapping, autocorrelation at lag $>0$ is theoretically negligible. However, to guard against conditional heteroskedasticity and clustering, $\widehat{\text{Var}}(\bar{d})$ is estimated using a Newey–West heteroskedasticity-and-autocorrelation-consistent (HAC) estimator with lag length selected via the automatic bandwidth rule of Newey and West (1994).
+  $$\text{DM} = \frac{\bar{d}}{\sqrt{\widehat{\text{LRV}}(\bar{d}) / N_{\text{test}}}} \xrightarrow{d} \mathcal{N}(0, 1) \quad \text{under } H_0: \mathbb{E}[d_t] \le 0$$
+  Because the target return is 1-day non-overlapping, autocorrelation at lag $>0$ is theoretically negligible. However, to guard against conditional heteroskedasticity and clustering, $\widehat{\text{LRV}}(\bar{d})$ is estimated using a Newey–West (1987) heteroskedasticity-and-autocorrelation-consistent (HAC) estimator with Bartlett kernel and automatic bandwidth $L = \lfloor 4 (N_{\text{test}} / 100)^{2/9} \rfloor$ (Newey & West, 1994).
 * **Stationary Block Bootstrap:**
-  Compute 95% bootstrap confidence intervals for $\bar{d}$ using a stationary block bootstrap (Politis & Romano, 1994) with mean block length chosen via the Politis and White (2004) algorithm. This preserves time-series dependence during resample generation.
+  Compute 95% bootstrap confidence intervals for $\bar{d}$ using a stationary block bootstrap (Politis & Romano, 1994) on the paired differential series $\{d_t\}$. Mean block length $b = \mathbb{E}[B]$ is selected via the data-dependent algorithm of Politis and White (2004) as corrected by Patton, Politis, and White (2009). Generate 2,000 bootstrap pseudo-series to construct 95% studentized and percentile confidence intervals.
+* **Multiple Testing Correction:**
+  To control false discovery rates across secondary diagnostic metrics (CRPS, PIT, interval coverage, quantiles), the Benjamini-Hochberg (1995) FDR procedure is applied at nominal level $q = 0.05$.
+* **Statistical vs. Practical Significance:**
+  * *Statistical Significance:* Achieved if one-sided Diebold-Mariano $p < 0.05$ and 95% stationary block bootstrap CI strictly excludes zero.
+  * *Practical Significance:* Requires an average log predictive density improvement $\bar{d} \ge 0.010$ nats per day (~2.5 nats per year). If $\bar{d} < 0.010$, findings are documented as economically trivial despite potential statistical significance.
 
-### 6.5 Optional Secondary Portfolio Translation
+### 6.6 Optional Secondary Portfolio Translation
 If time permits after forecast evaluation is complete, predictive distributions will be converted into an illustrative 1-asset volatility-targeting strategy (cash vs. index):
 * **Exposure Rule:**
   $$w_t = \text{clip}\left(\frac{\sigma_{\text{target}}}{\widehat{\sigma}_{t+1}}, 0.0, 1.0\right)$$
@@ -377,6 +411,7 @@ If time permits after forecast evaluation is complete, predictive distributions 
   $$r_{t+1}^{\text{net}} = w_t \, r_{t+1}^{\text{total}} - 0.0005 \cdot |w_t - w_{t-1}|$$
 * **Benchmarks:** Buy-and-hold SPX, static $15\%$ volatility target using trailing $\text{RV}_{20,t}$, and non-regime option volatility target ($B4$).
 * **Reporting:** Net annualized return, realized volatility, Sharpe ratio, maximum drawdown, and total portfolio turnover.
+* **Secondary Status:** The portfolio backtest is strictly secondary and illustrative; it cannot rescue or substitute for a failed density-forecast hypothesis.
 
 ---
 
@@ -404,29 +439,35 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
 +-----------------------------------------------------------------------------------+
 |                           Stage-by-Stage Stop / Go Gates                          |
 +-----------------------------------------------------------------------------------+
-  [Gate A: Data Quality & Coverage Gate] (End of Week 1)
-  - Verify presence of contiguous monthly EOD SPX chains (2010–2023).
-  - Execute targeted two-date quality audit (calm and stress) to verify schema, timestamps, parity, and SVIX.
-  - Benchmark SVIX against Cboe VIX as a structural diagnostic (accounting for theoretical VIX > SVIX wedge).
-  - Confirm contract-wise OTM screening retains adequate strikes across 20–50 DTE.
-  - Complete full-dataset session continuity and early strike depth audits prior to full-sample model training.
-                       | Passed
-                       v
-  [Gate B: Feature Pipeline & Parity Gate] (End of Week 2)
-  - Synthetic forward inversion F_t confirmed stable across >= 99% of trading dates.
-  - No lookahead verified via unit tests.
-  - Freeze processed feature/target datasets.
-                       | Passed
-                       v
-  [Gate C: Baseline Stability Gate] (End of Week 3)
-  - B0-B4 implemented and validated.
-  - Density forecasts integrate to 1.0, scales > 0, NLL finite and numerically stable.
+  [Gate A: Data Quality & Coverage Gate] -> STATUS: QUALIFIED PASS (Stage 3/4)
+  - Verify presence of contiguous monthly EOD SPX chains (2010–2023, 168 files).
+  - Targeted two-date quality audit confirmed schema, 16:00 timestamp, forward parity,
+    and Martin SVIX integration.
+  - Benchmarked SVIX against Cboe VIX as an empirical observation (accounting for
+    theoretical VIX > SVIX wedge).
+  - Confirmed contract-wise OTM screening retains adequate strikes across 20–50 DTE.
+  - Feature extraction algorithms for Q_t and X_t demonstrated on the two pilot dates.
+                        |
+                        v
+  [Gate B: Calendar Audit & Feature Construction Gate] -> NEXT STAGE PREREQUISITE
+  - Execute full 14-year calendar scan: verify missing trading sessions <= 1.0%.
+  - Verify early strike coverage: ensure 2010–2012 chains have >= 30 liquid strikes in 20–50 DTE.
+  - Implement dynamic daily interest rate ingestion (^IRX / FRED).
+  - Batch extract Q_t and X_t across training (2010–2019) and validation (2020–2021) partitions.
+  - Freeze interim feature matrices; confirm 2022–2023 test partition remains untouched.
+                        |
+                        v
+  [Gate C: Baseline Stability Gate] -> MODELING PREREQUISITE
+  - Fit models B0–B4 on development split (2010–2019).
+  - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
+    scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
+  - Verify HMM regime persistence: dwell time >= 5 days, occupancy >= 5% in each state.
   - If MDN unstable: Simplify to single-component Student-t location-scale model.
-                       | Passed
-                       v
-  [Gate D: Final Evaluation & Novelty Integrity Gate] (End of Week 4)
+                        |
+                        v
+  [Gate D: Final Evaluation & Novelty Integrity Gate] -> EVALUATION PREREQUISITE
   - Score untouched test set ONCE.
-  - Execute paired DM test and block bootstrap.
+  - Execute paired Diebold-Mariano test and stationary block bootstrap.
   - Report findings honestly (positive or null); freeze final write-up.
 +-----------------------------------------------------------------------------------+
 ```
