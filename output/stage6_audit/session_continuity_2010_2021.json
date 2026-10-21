@@ -1,0 +1,265 @@
+{
+  "audit_period": "2010-2021 (12 Calendar Years)",
+  "denominator_definition": "Official active exchange trading days from S&P 500 cash index (^GSPC) accounting for federal holidays and unscheduled closures (Sandy 2012, Bush funeral 2018)",
+  "total_expected_sessions": 3021,
+  "total_observed_sessions": 2994,
+  "total_missing_sessions": 30,
+  "total_unexpected_sessions": 3,
+  "overall_missing_rate_pct": 0.9930486593843099,
+  "passes_1pct_threshold": true,
+  "missing_dates": [
+    "2010-05-19",
+    "2010-11-15",
+    "2011-01-19",
+    "2011-01-20",
+    "2011-01-21",
+    "2011-01-24",
+    "2011-01-25",
+    "2011-08-22",
+    "2011-12-16",
+    "2012-02-29",
+    "2012-10-24",
+    "2014-01-02",
+    "2014-08-04",
+    "2014-12-05",
+    "2016-04-18",
+    "2017-09-27",
+    "2019-03-01",
+    "2019-04-17",
+    "2019-05-24",
+    "2019-06-07",
+    "2019-09-05",
+    "2020-06-18",
+    "2020-11-27",
+    "2020-12-24",
+    "2021-02-26",
+    "2021-08-09",
+    "2021-08-31",
+    "2021-09-07",
+    "2021-09-09",
+    "2021-09-15"
+  ],
+  "yearly_statistics": {
+    "2010": {
+      "expected_sessions": 252,
+      "observed_sessions": 250,
+      "missing_sessions": 2,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 0.7936507936507936,
+      "missing_dates": [
+        "2010-05-19",
+        "2010-11-15"
+      ]
+    },
+    "2011": {
+      "expected_sessions": 252,
+      "observed_sessions": 245,
+      "missing_sessions": 7,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 2.7777777777777777,
+      "missing_dates": [
+        "2011-01-19",
+        "2011-01-20",
+        "2011-01-21",
+        "2011-01-24",
+        "2011-01-25",
+        "2011-08-22",
+        "2011-12-16"
+      ]
+    },
+    "2012": {
+      "expected_sessions": 250,
+      "observed_sessions": 250,
+      "missing_sessions": 2,
+      "unexpected_sessions": 2,
+      "missing_rate_pct": 0.8,
+      "missing_dates": [
+        "2012-02-29",
+        "2012-10-24"
+      ]
+    },
+    "2013": {
+      "expected_sessions": 252,
+      "observed_sessions": 252,
+      "missing_sessions": 0,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 0.0,
+      "missing_dates": []
+    },
+    "2014": {
+      "expected_sessions": 252,
+      "observed_sessions": 249,
+      "missing_sessions": 3,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 1.1904761904761905,
+      "missing_dates": [
+        "2014-01-02",
+        "2014-08-04",
+        "2014-12-05"
+      ]
+    },
+    "2015": {
+      "expected_sessions": 252,
+      "observed_sessions": 252,
+      "missing_sessions": 0,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 0.0,
+      "missing_dates": []
+    },
+    "2016": {
+      "expected_sessions": 252,
+      "observed_sessions": 251,
+      "missing_sessions": 1,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 0.3968253968253968,
+      "missing_dates": [
+        "2016-04-18"
+      ]
+    },
+    "2017": {
+      "expected_sessions": 251,
+      "observed_sessions": 250,
+      "missing_sessions": 1,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 0.398406374501992,
+      "missing_dates": [
+        "2017-09-27"
+      ]
+    },
+    "2018": {
+      "expected_sessions": 251,
+      "observed_sessions": 252,
+      "missing_sessions": 0,
+      "unexpected_sessions": 1,
+      "missing_rate_pct": 0.0,
+      "missing_dates": []
+    },
+    "2019": {
+      "expected_sessions": 252,
+      "observed_sessions": 247,
+      "missing_sessions": 5,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 1.984126984126984,
+      "missing_dates": [
+        "2019-03-01",
+        "2019-04-17",
+        "2019-05-24",
+        "2019-06-07",
+        "2019-09-05"
+      ]
+    },
+    "2020": {
+      "expected_sessions": 253,
+      "observed_sessions": 250,
+      "missing_sessions": 3,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 1.185770750988142,
+      "missing_dates": [
+        "2020-06-18",
+        "2020-11-27",
+        "2020-12-24"
+      ]
+    },
+    "2021": {
+      "expected_sessions": 252,
+      "observed_sessions": 246,
+      "missing_sessions": 6,
+      "unexpected_sessions": 0,
+      "missing_rate_pct": 2.380952380952381,
+      "missing_dates": [
+        "2021-02-26",
+        "2021-08-09",
+        "2021-08-31",
+        "2021-09-07",
+        "2021-09-09",
+        "2021-09-15"
+      ]
+    }
+  },
+  "readtimes_summary": {
+    "2010": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2011": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2012": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2013": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2014": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2015": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2016": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2017": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2018": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2019": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2020": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    },
+    "2021": {
+      "distinct_time_suffixes": [
+        "16:00"
+      ],
+      "early_closes_count": 0,
+      "early_closes": []
+    }
+  }
+}

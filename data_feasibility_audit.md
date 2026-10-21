@@ -336,11 +336,38 @@ As authorized in Stage 2, a targeted empirical verification was executed on **ex
 
 ### 10.4 Revised Gate A Decision: **QUALIFIED PASS (CONDITIONAL APPROVAL)**
 
-The pilot data-quality check is approved on the two authorized dates. Work may proceed to Stage 4 (Feature Pipeline Specification). However, **full-sample model estimation remains conditioned on completing the following audit checks during pipeline construction**:
-1. Scan the full 14-year SPX calendar to verify that missing trading sessions do not exceed $1.0\%$.
+The pilot data-quality check is approved on the two authorized dates. Work may proceed to Stage 4 (Feature Pipeline Specification). However, **full-sample model estimation remains conditioned on completing the audit checks during pipeline construction**:
+1. Scan the SPX calendar to verify that missing trading sessions do not exceed $1.0\%$.
 2. Verify that 2010–2012 monthly chains contain at least 30 liquid strikes spanning $0.85 \le K/S \le 1.15$ in the 20–50 DTE band.
-3. Complete implementation and unit testing of the remaining $Q_t$ moments (QSkew, QKurt, ATM IV, Term Slope) and $X_t$ historical features (*Feature algorithms implemented and demonstrated in Stage 4 for the two pilot dates only; full-sample batch extraction across 2010–2021 deferred to Gate B*).
+3. Complete implementation and unit testing of the remaining $Q_t$ moments (QSkew, QKurt, ATM IV, Term Slope) and $X_t$ historical features (*Feature algorithms implemented and demonstrated in Stage 4 for the two pilot dates; batch extraction executed across 2010–2021 in Gate B*).
 4. Confirm exact training/validation/test session cutoffs based on verified calendar dates.
 
 ---
-*End of Data Feasibility Audit (Corrected Stage 3 Version).*
+
+## 11. Post-Audit Resolution: Stage 6 / Gate B Empirical Audit (21 October 2026)
+
+In Stage 6, the authorized Gate B empirical data audit was conducted across the 2010–2021 Development and Validation periods, while keeping the 2022–2023 test partition sealed. Complete details are documented in [gate_b_audit_report.md](file:///D:/IE612_Project/gate_b_audit_report.md).
+
+### 11.1 Session Continuity Findings (2010–2021)
+* **Authoritative Denominator:** 3,021 active exchange trading sessions (`^GSPC` benchmark, accounting for Hurricane Sandy closures on 2012-10-29/30 and Bush mourning closure on 2018-12-05).
+* **Observed Option Sessions:** 2,994 sessions.
+* **Missing Sessions:** 30 sessions (0.993% missing rate $\le 1.0\%$).
+* **Stale Closure Sessions:** OptionsDX files contained synthetic/stale quotes propagated from prior days on the 3 market closure dates (2012-10-29, 2012-10-30, 2018-12-05). These are filtered from evaluation.
+* **Incomplete 14-Year Audit:** Because the 2022–2023 test partition remains sealed to preserve out-of-sample purity, the 14-year continuity audit is incomplete.
+
+### 11.2 Early-Sample Strike Breadth Findings (2010–2012)
+* **Audit Scope:** 745 trading sessions across 36 monthly files.
+* **Monthly Expiration Cycle Deficit:** Prior to mid-2012, standard monthly expirations left long gaps between expiries. 30-day constant-maturity bracketing failed on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**.
+* **Weekly Option Shift (Mid-2012):** Introduction of weekly options in June/July 2012 caused 30-day bracketing to jump to **95–100%**.
+* **Call Wing Truncation:** While put wings routinely extended below $0.75 \times S$, liquid call quotes truncated at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of early sessions.
+
+### 11.3 Quote Timestamps & Cash Synchronization (Gate B Prerequisite)
+* Vendor readtime strings uniformly report `'16:00'`, but do not document whether quotes reflect instantaneous 16:00:00 ET NBBO or 16:15:00 ET Cboe option settlement.
+* Put-call parity guarantees internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$.
+* **Information Cutoff Gate Status:** Remains **UNRESOLVED**. Operational model fitting remains strictly gated.
+
+### 11.4 Gate B Status: **CONDITIONALLY BLOCKED / QUALIFIED PASS**
+Candidate feature datasets for Development (2010–2019, SHA-256: `3d0fe64a0ac3c3ee7321ece6aeaa1c1deb8638610609ed382c13055f3dc5ec73`) and Validation (2020–2021, SHA-256: `bd23a5fcbb88ee1dd0b13d6a9fd5d0b3952079843b64de84bf814cac042fff69`) are frozen in `output/stage6_features/`. However, Gate B cannot be claimed fully passed until test partition audit deferral is formally confirmed and the 16:00 vs. 16:15 ET information cutoff is resolved.
+
+---
+*End of Data Feasibility Audit (Updated Stage 6 Version).*

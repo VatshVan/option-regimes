@@ -1,0 +1,55 @@
+{
+  "dataset_name": "SPX Option-Implied and Historical Feature Datasets (Stage 6 / Gate B)",
+  "creation_date": "2026-10-21",
+  "description": "Constructed according to Stage 4 feature definitions and Stage 5 walk-forward specifications",
+  "test_partition_status": "SEALED AND UNTOUCHED (2022-2023 raw files remain unparsed and unopened)",
+  "partitions": {
+    "development": {
+      "file": "spx_features_development_2010_2019.csv",
+      "date_range": [
+        "2010-01-04",
+        "2019-12-31"
+      ],
+      "row_count": 2516,
+      "sha256": "3d0fe64a0ac3c3ee7321ece6aeaa1c1deb8638610609ed382c13055f3dc5ec73",
+      "q_valid_count": 2285,
+      "q_missing_count": 231,
+      "q_missing_rate_pct": 9.181240063593005,
+      "x_valid_count": 2516
+    },
+    "validation": {
+      "file": "spx_features_validation_2020_2021.csv",
+      "date_range": [
+        "2020-01-02",
+        "2021-12-31"
+      ],
+      "row_count": 505,
+      "sha256": "bd23a5fcbb88ee1dd0b13d6a9fd5d0b3952079843b64de84bf814cac042fff69",
+      "q_valid_count": 496,
+      "q_missing_count": 9,
+      "q_missing_rate_pct": 1.782178217821782,
+      "x_valid_count": 505
+    }
+  },
+  "feature_units": {
+    "SVIX_30d": "Decimal annualized simple variance swap volatility (e.g. 0.1200 = 12.00%)",
+    "QSkew_30d": "Standardized centered 3rd risk-neutral moment (unitless)",
+    "QKurt_30d": "Standardized centered 4th risk-neutral moment (Gaussian = 3.0, non-excess)",
+    "ATM_IV_30d": "Decimal annualized Black-76 implied volatility",
+    "ATM_IV_60d": "Decimal annualized Black-76 implied volatility",
+    "TermSlope_60_30": "ATM_IV_60d - ATM_IV_30d (vol points)",
+    "S_t": "Index points (S&P 500 cash closing price)",
+    "r_1d": "Daily log return ln(S_t / S_{t-1})",
+    "r_5d": "5-day cumulative log return",
+    "rv_5d": "Decimal annualized 5-day realized volatility",
+    "rv_20d": "Decimal annualized 20-day realized volatility",
+    "dsemi_20d": "Decimal annualized 20-day downside semivariance",
+    "dd_20d": "Trailing 20-day maximum drawdown (negative decimal or 0.0)",
+    "target_r_next": "Next-day log return ln(S_{t+1} / S_t) (forecast target label)"
+  },
+  "unresolved_gates_and_caveats": [
+    "Information Cutoff Gate (OD-6): Option quotes have vendor readtime '16:00', but 16:15 ET option trading lookahead risk remains unverified across product vintages. Operational model training remains strictly gated.",
+    "Rate Input Ingestion (OD-1): Daily continuous rate r_cont converted from 13-week T-Bill discount yield (^IRX) via r_cont = -(365/91)*ln(1 - d*(91/360)). Multi-tenor term-structure matching remains open.",
+    "Early Strike Breadth: 2010-2011 option chains suffer from high missingness in Q_t (~70%) due to standard monthly-only expiries lacking 30-day bracketing tenors prior to weekly option introduction in mid-2012."
+  ]
+}

@@ -455,14 +455,18 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - Feature extraction algorithms for Q_t and X_t demonstrated on the two pilot dates.
                         |
                         v
-  [Gate B: Calendar Audit & Feature Construction Gate] -> NEXT STAGE PREREQUISITE
-  - Execute full 14-year calendar scan: verify missing trading sessions <= 1.0%.
-  - Verify early strike coverage: ensure 2010–2012 chains have >= 30 liquid strikes in 20–50 DTE.
-  - Resolve information cutoff & quote timing: empirically verify 16:00 vs 16:15 ET quote
-    synchronization; gate option feature use in forecasting models until verified.
-  - Implement dynamic daily interest rate ingestion (^IRX / FRED).
-  - Batch extract Q_t and X_t across training (2010–2019) and validation (2020–2021) partitions.
-  - Freeze interim feature matrices; confirm 2022–2023 test partition remains untouched.
+  [Gate B: Calendar Audit & Feature Construction Gate] -> STATUS: CONDITIONALLY BLOCKED / QUALIFIED
+  - Audited 2010-2021 session continuity: 3,021 expected sessions, 2,994 observed, 30 missing
+    (0.993% missing rate <= 1.0%), 3 stale closure sessions identified and filtered.
+  - Audited early strike breadth (2010-2012): identified monthly-only expiry deficit in 2010-2011
+    (~70% missing 30d bracketing) and weekly option regime shift in mid-2012.
+  - Quote timestamps audited: uniform '16:00' vendor string, zero '13:00' early close stamps.
+  - Converted T-bill discount yield to continuously compounded zero rate: r = -(365/91)*ln(1-d*91/360).
+  - Feature datasets frozen: Development (2010-2019, 2,516 rows, SHA-256: 3d0fe64a...) and
+    Validation (2020-2021, 505 rows, SHA-256: bd23a5fc...).
+  - Test partition (2022-2023) maintained 100% SEALED AND UNTOUCHED.
+  - BLOCKERS: 14-year calendar audit incomplete due to test seal; 16:00 vs 16:15 ET cutoff
+    remains unverified. Cannot claim Gate B is fully passed. Model training remains gated.
                         |
                         v
   [Gate C: Baseline Stability Gate] -> MODELING PREREQUISITE
@@ -500,14 +504,14 @@ The following operational choices are explicitly labeled as **UNRESOLVED** and m
 
 | Unresolved Decision | Governing Constraints | Provisional Default | Action Required in Stage 2 Audit |
 |---|---|---|---|
-| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **Stage 4 Status:** Monthly file inventory verified; feature pipeline algorithms for full $Q_t$ and $X_t$ specifications implemented and verified on the two demonstration dates. Full 14-year session continuity and early-sample (2010–2012) strike breadth remain unverified until the authorized calendar audit. |
-| **2. Exact Split Boundary Dates** | Train/Val/Test calendar span aligned with macro regimes. | **Train:** 2010–2019 (~71.4%) <br>**Val:** 2020–2021 (~14.3%) <br>**Test:** 2022–2023 (~14.3%) | **Provisional Default Fixed:** Calendar-year partition (~71.4% / 14.3% / 14.3% by year span) approved; exact usable session counts will be computed from the full calendar audit without assuming nominal totals. |
-| **3. Risk-Free Rate Source & Curve** | Forward inversion requires reliable daily risk-free rates matching contract DTE. | **Daily 13-week T-Bill (`^IRX`) or FRED 1M/3M CMT** | **Illustrative Benchmark Status:** Demonstration rates ($1.508\%$ on 2020-01-15 and $0.918\%$ on 2020-03-03) are hardcoded illustrative benchmarks based on Cboe 13-week T-Bill (`^IRX`) closes. Continuous dynamic daily yield curve ingestion matching each option tenor has not been integrated into the repository and remains unverified for the full sample. |
-| **4. Density Architecture Selection** | Balance between flexible multi-modality and numerical training stability on daily series. | **Student-$t$ Location-Scale Regression** (Primary fallback: 2-component MDN) | Evaluate MDN log-likelihood stability on validation split. If loss divergence or mode collapse occurs, freeze Student-$t$. |
-| **5. Number of Latent Regimes ($K$)** | Must maintain distinct, economically interpretable state separation without overfitting. | **$K = 2$ (Low Vol / High Vol)** (Test $K=3$ on validation only) | Inspect state occupancy in validation refits. If any state has $<5\%$ dwell time, freeze $K=2$. |
+| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **Gate B Status (Stage 6):** 2010-2021 audited (3,021 expected sessions, 2,994 observed, 30 missing sessions, 0.993% missing rate <= 1.0%). Test partition (2022-2023) maintained sealed; 14-year audit incomplete due to test seal. |
+| **2. Exact Split Boundary Dates** | Train/Val/Test calendar span aligned with macro regimes. | **Train:** 2010-2019 (~71.4%) <br>**Val:** 2020-2021 (~14.3%) <br>**Test:** 2022-2023 (~14.3%) | **Provisional Default Fixed:** Calendar-year partition (~71.4% / 14.3% / 14.3% by year span) approved; exact usable session counts will be computed from the full calendar audit without assuming nominal totals. |
+| **3. Risk-Free Rate Source & Curve** | Forward inversion requires reliable daily risk-free rates matching contract DTE. | **Daily 13-week T-Bill (^IRX) or FRED 1M/3M CMT** | **Gate B Status (Stage 6):** Continuous day-count conversion derived and implemented in interim datasets ({\\text{cont}} = -\\frac{365}{91} \\ln(1 - d \\frac{91}{360})$). Multi-tenor curve matching remains open. Stage 4 demonstration rates (.508\\%$ and .918\\%$) preserved as illustrative benchmarks. |
+| **4. Density Architecture Selection** | Balance between flexible multi-modality and numerical training stability on daily series. | **Student-$ Location-Scale Regression** (Primary fallback: 2-component MDN) | Evaluate MDN log-likelihood stability on validation split. If loss divergence or mode collapse occurs, freeze Student-$. |
+| **5. Number of Latent Regimes ($)** | Must maintain distinct, economically interpretable state separation without overfitting. | ** = 2$ (Low Vol / High Vol)** (Test =3$ on validation only) | Inspect state occupancy in validation refits. If any state has $<5\\%$ dwell time, freeze =2$. |
 | **6. Inclusion of Secondary Portfolio Backtest** | Depends on course rubric requirements and remaining time in the 1-month timeline. | **Optional secondary deliverable** | Confirm with course instructor/rubric whether portfolio allocation is required or purely illustrative. |
-| **7. OptionsDX Raw Redistribution Compliance** | OptionsDX terms prohibit public redistribution of raw CSV files. | **Local gitignore of `Data/`** | Ensure `.gitignore` permanently excludes raw files; include only processed features or code in final hand-in. |
-| **8. Information Cutoff & Quote Synchronization** | Cash equity closes at 16:00 ET; SPX options historically traded until 16:15 ET. 15-minute lookahead must be prevented. | **Unresolved Cutoff Gate** | Empirically verify quote timing in Gate B; gate all option feature use in predictive models until synchronization is confirmed or a defensible cutoff is specified. |
+| **7. OptionsDX Raw Redistribution Compliance** | OptionsDX terms prohibit public redistribution of raw CSV files. | **Local gitignore of Data/** | Ensure .gitignore permanently excludes raw files; include only processed features or code in final hand-in. |
+| **8. Information Cutoff & Quote Synchronization** | Cash equity closes at 16:00 ET; SPX options historically traded until 16:15 ET. 15-minute lookahead must be prevented. | **Unresolved Cutoff Gate** | **Gate B Status (Stage 6):** Empirical audit verified uniform '16:00' vendor string, but absence of exchange timestamp proof leaves 16:15 ET lookahead risk active. Operational model fitting remains strictly gated. |
 
 ---
 

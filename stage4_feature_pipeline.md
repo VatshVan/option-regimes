@@ -186,13 +186,14 @@ The runner script [`run_stage4_feature_pipeline.py`](file:///D:/IE612_Project/ru
 
 ---
 
-## 7. Documented Limitations and Unresolved Data Decisions
+## 7. Documented Limitations, Unresolved Data Decisions, and Gate B Audit Status
 
-To maintain scientific rigor, the following decisions remain explicitly **unresolved**:
-1. **16:00 vs. 16:15 Quote Timestamp Ambiguity:** While both demonstration dates report `16:00` in OptionsDX `QUOTE_READTIME`, standard SPX index options historically traded until 16:15 ET. Synthetic forward parity ensures internal surface consistency, but does not prove synchronization with the 16:00 ET cash equity close $S_t$ or eliminate potential 15-minute look-ahead risk.
-2. **Finite-Strike Quadrature vs. Continuum Integrals:** SVIX, QSkew, and QKurt are computed over the discrete retained strike range $[K_{\min}, K_{\max}]$ without tail extrapolation. They are finite-grid numerical estimates, not continuum integrals over $[0, \infty)$.
-3. **Unverified Early-Sample Strike Density (2010–2012):** Monthly files in 2010 (~5 MB) contain fewer listed strikes than 2020 (~40 MB). Whether early chains contain sufficient strikes to avoid BKM variance breakdown remains unverified until the full calendar audit.
-4. **Full Sample Intra-Month Session Continuity:** Verification that missing trading sessions do not exceed the $1.0\%$ protocol tolerance remains pending the authorized calendar audit.
+To maintain scientific rigor, the following decisions and empirical audit findings are explicitly documented:
+1. **16:00 vs. 16:15 Quote Timestamp Ambiguity (Gate B Check 3):** Across all 3,021 sessions in 2010–2021, OptionsDX `QUOTE_READTIME` uniformly reports `'16:00'`. However, standard SPX index options historically traded until 16:15 ET. Synthetic forward parity ensures internal surface consistency across simultaneous quotes, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$ or eliminate potential 15-minute look-ahead risk. The information cutoff remains an **unresolved decision gate (OD-6)**.
+2. **Finite-Strike Quadrature vs. Continuum Integrals:** SVIX, QSkew, and QKurt are computed over the discrete retained strike range $[K_{\min}, K_{\max}]$ with standard composite trapezoidal weights without tail extrapolation. They are finite-grid numerical estimates, not continuum integrals over $[0, \infty)$.
+3. **Early-Sample Strike Density & Expiration Gaps (2010–2012 Audit):** Auditing 745 trading sessions across 2010–2012 revealed that prior to the mid-2012 introduction of weekly options, Cboe listed SPX options primarily on standard monthly cycles. Consequently, 30-day constant-maturity bracketing failed on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**, inducing a 9.18% raw missingness rate in $Q_t$ across the 2010–2019 development period. Furthermore, call wings routinely truncated at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of sessions.
+4. **Intra-Month Session Continuity Audit (2010–2021):** Out of 3,021 expected exchange sessions, 2,994 option sessions were observed (30 missing, overall missing rate $0.993\% \le 1.0\%$). OptionsDX also propagated stale quotes on 3 market closure dates (Sandy Oct 29–30, 2012; Bush funeral Dec 5, 2018), which were identified and filtered.
+5. **Frozen Interim Feature Datasets (Stage 6 Deliverable):** Candidate datasets for Development (2010–2019, 2,516 rows, SHA-256: `3d0fe64a0ac3c3ee7321ece6aeaa1c1deb8638610609ed382c13055f3dc5ec73`) and Validation (2020–2021, 505 rows, SHA-256: `bd23a5fcbb88ee1dd0b13d6a9fd5d0b3952079843b64de84bf814cac042fff69`) have been generated and frozen in `output/stage6_features/` with point-in-time continuous rate conversions derived from daily `^IRX`. The 2022–2023 test partition remains sealed and untouched.
 
 ---
-*End of Stage 4 Implementation Note.*
+*End of Stage 4 Implementation Note (Updated Post-Gate B Audit).*

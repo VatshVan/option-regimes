@@ -295,12 +295,12 @@ The following operational choices are explicitly documented as **OPEN DECISIONS*
 
 | Decision ID | Description | Governing Constraint | Recommended Default | Approval Status |
 |---|---|---|---|---|
-| **OD-1** | **Risk-Free Rate Ingestion** | Dynamic daily curve vs. fixed benchmark | Ingest continuous daily 13-week T-Bill (`^IRX`) or FRED 3M CMT matching date $t$. | **Open** (Stage 4 used illustrative benchmarks $1.508\%$ and $0.918\%$; automated curve ingestion deferred). |
+| **OD-1** | **Risk-Free Rate Ingestion** | Dynamic daily curve vs. fixed benchmark | Ingest continuous daily 13-week T-Bill (`^IRX`) via $r = -\frac{365}{91} \ln(1 - d \frac{91}{360})$ or FRED 3M CMT matching date $t$. | **Conversion Formula Implemented in Gate B Interim Datasets**; multi-tenor curve matching remains open. |
 | **OD-2** | **Density Architecture** | Student-$t$ Location-Scale vs. 2-component MDN | Default to single-component Student-$t$ location-scale. MDN retained only if validation NLL improves with zero mode collapse. | **Provisional Default Fixed** (Student-$t$ location-scale prioritized for numerical robustness). |
 | **OD-3** | **Regime Count ($K$)** | $K=2$ vs. $K=3$ | Default to $K=2$ (Calm/Stress) unless $K=3$ passes $>5\%$ occupancy on validation and lowers NLL by $>0.02$. | **Provisional Default Fixed** ($K=2$ default). |
-| **OD-4** | **Consecutive Missing Data Rule** | Drop date vs. causal carry-forward | Forward-fill $Q_t = Q_{t-1}$ for $\le 1$ day; drop date from scoring for $>1$ day gap. | **Recommended Default** (Requires confirmation during full calendar audit). |
+| **OD-4** | **Consecutive Missing Data Rule** | Drop date vs. causal carry-forward | Forward-fill $Q_t = Q_{t-1}$ for $\le 1$ day; drop date from scoring for $>1$ day gap. | **Empirically Audited in Gate B** (Reduces validation missingness from 1.78% to 0.00%; leaves 7.27% missingness in development due to 2010–2011 monthly gaps). |
 | **OD-5** | **Portfolio Translation Inclusion** | Inclusion of cash/index volatility-targeted backtest | Strictly optional secondary deliverable. Cannot rescue a failed density hypothesis. | **Provisional Default Fixed** (Confirmed as secondary/optional). |
-| **OD-6** | **Information Cutoff & Quote Synchronization** | 16:00 vs. 16:15 ET lookahead risk; cash close $S_t$ frozen at 16:00 while options traded until 16:15 ET. | **Unresolved Cutoff Gate:** Empirically verify quote timing in Gate B; gate all option feature use in predictive models until synchronization is confirmed or a defensible cutoff is specified. | **Open & Gated** (Quote timing remains unverified across product vintages). |
+| **OD-6** | **Information Cutoff & Quote Synchronization** | 16:00 vs. 16:15 ET lookahead risk; cash close $S_t$ frozen at 16:00 while options traded until 16:15 ET. | **Unresolved Cutoff Gate:** Gate all option feature use in predictive models until synchronization is confirmed or a defensible cutoff is specified. | **Open & Strictly Gated** (Vendor string `'16:00'` audited in Gate B, but does not prove synchronization with 16:00 ET cash close). |
 
 ---
 
@@ -318,17 +318,33 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
   - Demonstrated QSkew, QKurt, ATM IV, and X_t algorithms on the 2 pilot dates.
                         |
                         v
-  [Gate B: Calendar Audit & Feature Construction Gate] -> NEXT STAGE PREREQUISITE
-  - Execute full 14-year calendar scan: verify missing trading sessions <= 1.0%.
-  - Verify early strike coverage: ensure 2010–2012 chains have >= 30 liquid strikes in 20–50 DTE.
-  - Resolve information cutoff & quote timing: empirically verify 16:00 vs 16:15 ET quote
-    synchronization; gate option feature use in forecasting models until verified.
-  - Implement dynamic daily interest rate ingestion (`^IRX` / FRED).
-  - Batch extract Q_t and X_t across training (2010–2019) and validation (2020–2021) partitions.
-  - Freeze interim feature matrices; confirm 2022–2023 test partition remains untouched.
+  [Gate B: Calendar Audit & Feature Construction Gate] -> STATUS: CONDITIONALLY BLOCKED / QUALIFIED
+  - Audited 2010–2021 session continuity: 3,021 expected sessions, 2,994 observed, 30 missing
+    (0.993% missing rate <= 1.0%), 3 stale closure sessions identified and filtered.
+  - Audited early strike breadth (2010–2012): identified monthly-only expiry deficit in 2010–2011
+    (~70% missing 30d bracketing) and weekly option regime shift in mid-2012.
+  - Quote timestamps audited: uniform '16:00' vendor string, zero '13:00' early close stamps.
+  - Converted T-bill discount yield to continuously compounded zero rate: r = -(365/91)*ln(1-d*91/360).
+  - Feature datasets frozen: Development (2010–2019, 2,516 rows, SHA-256: 3d0fe64a...) and
+    Validation (2020–2021, 505 rows, SHA-256: bd23a5fc...).
+  - Test partition (2022–2023) maintained 100% SEALED AND UNTOUCHED.
+  - BLOCKERS: 14-year calendar audit incomplete due to test seal; 16:00 vs 16:15 ET cutoff
+    remains unverified. Cannot claim Gate B is fully passed. Model training remains gated.
                         |
                         v
   [Gate C: Baseline & Density Stability Gate] -> MODELING PREREQUISITE
+  - Fit models B0–B4 on supervised development pairs {t <= tau - 1} (2010–2019).
+  - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
+    scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
+  - Verify HMM regime persistence on emissions {t <= tau}: dwell time >= 5 days, occupancy >= 5%.
+                        |
+                        v
+  [Gate D: Final Test Evaluation & Integrity Gate] -> EVALUATION PREREQUISITE
+  - Score frozen B4 and R1 models on the untouched 2022–2023 test partition EXACTLY ONCE.
+  - Execute paired Diebold-Mariano test and stationary block bootstrap.
+  - Report findings transparently, regardless of whether H1 is supported or refuted.
++-----------------------------------------------------------------------------------------+
+```
   - Fit models B0–B4 on supervised development pairs {t <= tau - 1} (2010–2019).
   - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
     scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
