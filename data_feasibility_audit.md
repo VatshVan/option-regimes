@@ -344,30 +344,41 @@ The pilot data-quality check is approved on the two authorized dates. Work may p
 
 ---
 
-## 11. Post-Audit Resolution: Stage 6 / Gate B Empirical Audit (21 October 2026)
+## 11. Post-Audit Resolution: Stage 6 / Gate B Empirical Audit (21 October 2026, Revised)
 
-In Stage 6, the authorized Gate B empirical data audit was conducted across the 2010–2021 Development and Validation periods, while keeping the 2022–2023 test partition sealed. Complete details are documented in [gate_b_audit_report.md](file:///D:/IE612_Project/gate_b_audit_report.md).
+In Stage 6, the authorized Gate B empirical data audit was conducted across the 2010–2021 Development and Validation periods. Complete details and full numerical distributions are documented in [gate_b_audit_report.md](file:///D:/IE612_Project/gate_b_audit_report.md).
 
-### 11.1 Session Continuity Findings (2010–2021)
+### 11.1 Session Continuity Findings & Reconciliation (2010–2021)
 * **Authoritative Denominator:** 3,021 active exchange trading sessions (`^GSPC` benchmark, accounting for Hurricane Sandy closures on 2012-10-29/30 and Bush mourning closure on 2018-12-05).
 * **Observed Option Sessions:** 2,994 sessions.
-* **Missing Sessions:** 30 sessions (0.993% missing rate $\le 1.0\%$).
-* **Stale Closure Sessions:** OptionsDX files contained synthetic/stale quotes propagated from prior days on the 3 market closure dates (2012-10-29, 2012-10-30, 2018-12-05). These are filtered from evaluation.
-* **Incomplete 14-Year Audit:** Because the 2022–2023 test partition remains sealed to preserve out-of-sample purity, the 14-year continuity audit is incomplete.
+* **Missing Sessions:** 30 sessions.
+* **Unexpected Sessions:** 3 market closure dates where OptionsDX propagated stale quotes, identical underlyings (`1411.94` and `2700.06`), and stale volumes (Sandy Oct 29–30, 2012; Bush mourning Dec 5, 2018).
+* **Arithmetic Reconciliation:**
+  $$\text{Observed SPX Dates (2,994)} = \text{Expected Exchange Sessions (3,021)} - \text{Missing Active Sessions (30)} + \text{Unexpected Stale Records (3)}$$
+* **Non-Uniform Annual Missingness:** While aggregate 12-year missingness is $0.993\% \le 1.0\%$, annual missingness exceeds the 1.0% limit in 5 separate years: 2011 (**2.78%**, 5-day consecutive outage), 2014 (**1.19%**), 2019 (**1.98%**), 2020 (**1.19%**), and 2021 (**2.38%**). Continuity is not a uniform annual pass.
+* **Incomplete 14-Year Audit:** Because the 2022–2023 raw option files remain unopened, a full 14-year session continuity audit cannot be completed.
 
 ### 11.2 Early-Sample Strike Breadth Findings (2010–2012)
 * **Audit Scope:** 745 trading sessions across 36 monthly files.
 * **Monthly Expiration Cycle Deficit:** Prior to mid-2012, standard monthly expirations left long gaps between expiries. 30-day constant-maturity bracketing failed on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**.
 * **Weekly Option Shift (Mid-2012):** Introduction of weekly options in June/July 2012 caused 30-day bracketing to jump to **95–100%**.
-* **Call Wing Truncation:** While put wings routinely extended below $0.75 \times S$, liquid call quotes truncated at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of early sessions.
+* **Call Wing Truncation:** Liquid call quotes truncated at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of early sessions.
 
 ### 11.3 Quote Timestamps & Cash Synchronization (Gate B Prerequisite)
 * Vendor readtime strings uniformly report `'16:00'`, but do not document whether quotes reflect instantaneous 16:00:00 ET NBBO or 16:15:00 ET Cboe option settlement.
 * Put-call parity guarantees internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$.
 * **Information Cutoff Gate Status:** Remains **UNRESOLVED**. Operational model fitting remains strictly gated.
 
-### 11.4 Gate B Status: **CONDITIONALLY BLOCKED / QUALIFIED PASS**
-Candidate feature datasets for Development (2010–2019, SHA-256: `3d0fe64a0ac3c3ee7321ece6aeaa1c1deb8638610609ed382c13055f3dc5ec73`) and Validation (2020–2021, SHA-256: `bd23a5fcbb88ee1dd0b13d6a9fd5d0b3952079843b64de84bf814cac042fff69`) are frozen in `output/stage6_features/`. However, Gate B cannot be claimed fully passed until test partition audit deferral is formally confirmed and the 16:00 vs. 16:15 ET information cutoff is resolved.
+### 11.4 Rate Fallback Audit & Elimination of Silent Imputation
+* On two federal bank holidays where US bond markets were closed but equity markets traded (2010-10-11 Columbus Day and 2016-11-11 Veterans Day), `^IRX` was missing (`NaN`).
+* Rates were causally carried forward from the prior active trading day with explicit logging (`rate_source = 'CAUSAL_PRIOR_SESSION_CARRYFORWARD'`, `rate_is_fallback = True`). Zero silent constant substitution was performed. Moments on 2016-11-11 were recomputed at the exact causal rate ($0.004652$).
+
+### 11.5 Test Boundary Disclosure, Target Label Corrections & Candidate Datasets
+* **Test Boundary Disclosure:** Downloading `^GSPC` through January 2022 accessed the `2022-01-03` close (`4796.56`). Although raw 2022–2023 option bundles remained unopened, cash close access compromised the claim of an untouched test seal.
+* **Partition Target Corrections:** In the corrected validation dataset, target $r_{t+1}$ on `2021-12-31` is set to `NaN` (`UNOBSERVED_WITHOUT_TEST_CLOSE`). The development terminal row `2019-12-31` is flagged `CROSS_PARTITION_LABEL`.
+* **Complete 5-Feature Completeness:** $Q_t \in \mathbb{R}^5$ is valid on **2,233 rows (88.75%)** and missing on **283 rows (11.25%)** in Development (due to 2010–2011 monthly gaps and 60d slope gaps); valid on **496 rows (98.22%)** and missing on **9 rows (1.78%)** in Validation.
+* **Dataset Status:** Candidate feature datasets for Development (2,516 rows, SHA-256: `201679a93c387507d6766283b44036f736e40920088feebbf5afb3dad6a96f11`) and Validation (505 rows, SHA-256: `8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7`) are candidate audit outputs, **not permanently frozen**.
+* **Gate B Status:** **BLOCKED / QUALIFIED**. Work may not proceed to Stage 7 (Forecasting Model Fitting) until the information cutoff and test boundary audit decisions are formally resolved.
 
 ---
 *End of Data Feasibility Audit (Updated Stage 6 Version).*

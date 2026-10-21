@@ -455,18 +455,22 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - Feature extraction algorithms for Q_t and X_t demonstrated on the two pilot dates.
                         |
                         v
-  [Gate B: Calendar Audit & Feature Construction Gate] -> STATUS: CONDITIONALLY BLOCKED / QUALIFIED
-  - Audited 2010-2021 session continuity: 3,021 expected sessions, 2,994 observed, 30 missing
-    (0.993% missing rate <= 1.0%), 3 stale closure sessions identified and filtered.
+  [Gate B: Calendar Audit & Feature Construction Gate] -> STATUS: BLOCKED / QUALIFIED
+  - Audited 2010-2021 session continuity & reconciliation: 3,021 expected - 30 missing + 3 unexpected
+    stale closure records = 2,994 observed. Aggregate missing rate 0.993% <= 1.0%, but annual missingness
+    exceeds 1.0% in 5 calendar years (2011, 2014, 2019, 2020, 2021). Not a clean annual pass.
   - Audited early strike breadth (2010-2012): identified monthly-only expiry deficit in 2010-2011
     (~70% missing 30d bracketing) and weekly option regime shift in mid-2012.
   - Quote timestamps audited: uniform '16:00' vendor string, zero '13:00' early close stamps.
-  - Converted T-bill discount yield to continuously compounded zero rate: r = -(365/91)*ln(1-d*91/360).
-  - Feature datasets frozen: Development (2010-2019, 2,516 rows, SHA-256: 3d0fe64a...) and
-    Validation (2020-2021, 505 rows, SHA-256: bd23a5fc...).
-  - Test partition (2022-2023) maintained 100% SEALED AND UNTOUCHED.
-  - BLOCKERS: 14-year calendar audit incomplete due to test seal; 16:00 vs 16:15 ET cutoff
-    remains unverified. Cannot claim Gate B is fully passed. Model training remains gated.
+  - Converted T-bill discount yield to continuous rate: r = -(365/91)*ln(1-d*91/360). Causal carryforward
+    on Columbus Day 2010 and Veterans Day 2016 explicitly logged (zero silent imputation).
+  - Candidate feature datasets generated: Development (2,516 rows, 2,233 all-5 valid [88.75%],
+    283 missing [11.25%], SHA-256: 201679a9...) and Validation (505 rows, 496 all-5 valid [98.22%],
+    9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
+  - TEST BOUNDARY DISCLOSURE: ^GSPC close for 2022-01-03 accessed during download; test seal cannot
+    be claimed as intact. Terminal validation label on 2021-12-31 set to NaN to prevent test persistence.
+  - BLOCKERS: 14-year calendar audit incomplete; 16:00 vs 16:15 ET cutoff remains unverified.
+    Model training remains strictly gated. Cannot claim Gate B passed.
                         |
                         v
   [Gate C: Baseline Stability Gate] -> MODELING PREREQUISITE

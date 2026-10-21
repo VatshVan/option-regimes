@@ -1,8 +1,9 @@
 {
-  "dataset_name": "SPX Option-Implied and Historical Feature Datasets (Stage 6 / Gate B)",
+  "dataset_name": "SPX Corrected Candidate Feature Datasets (Stage 6 Deliverable)",
   "creation_date": "2026-10-21",
-  "description": "Constructed according to Stage 4 feature definitions and Stage 5 walk-forward specifications",
-  "test_partition_status": "SEALED AND UNTOUCHED (2022-2023 raw files remain unparsed and unopened)",
+  "dataset_status": "CANDIDATE_AUDIT_OUTPUT (NOT PERMANENTLY FROZEN; PENDING INFORMATION CUTOFF AND TEST AUDIT DECISIONS)",
+  "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56). Although raw 2022-2023 option bundles remained unopened, cash close access breached the test seal. The test partition cannot be claimed intact. In the corrected validation dataset, target_r_next on 2021-12-31 is set to NaN (UNOBSERVED_WITHOUT_TEST_CLOSE) to eliminate test data persistence.",
+  "rate_fallback_disclosure": "On two federal bank holidays where bond markets were closed but equity markets traded (2010-10-11 Columbus Day and 2016-11-11 Veterans Day), ^IRX discount yields were missing. The pipeline causally carried forward rates from the prior session with explicit rate_source, rate_is_fallback=True, and rate_fallback_note logging. Zero silent constant substitution was performed.",
   "partitions": {
     "development": {
       "file": "spx_features_development_2010_2019.csv",
@@ -11,11 +12,17 @@
         "2019-12-31"
       ],
       "row_count": 2516,
-      "sha256": "3d0fe64a0ac3c3ee7321ece6aeaa1c1deb8638610609ed382c13055f3dc5ec73",
-      "q_valid_count": 2285,
-      "q_missing_count": 231,
-      "q_missing_rate_pct": 9.181240063593005,
-      "x_valid_count": 2516
+      "sha256": "201679a93c387507d6766283b44036f736e40920088feebbf5afb3dad6a96f11",
+      "q_valid_all5_count": 2233,
+      "q_missing_all5_count": 283,
+      "q_missing_all5_pct": 11.248012718600954,
+      "q_valid_30d_only_count": 2285,
+      "q_missing_30d_only_count": 231,
+      "q_missing_30d_only_pct": 9.181240063593005,
+      "term_slope_missing_count": 283,
+      "x_valid_all6_count": 2516,
+      "rate_fallback_count": 2,
+      "terminal_label_note": "Row 2019-12-31 target_r_next utilizes validation close 2020-01-02 (flagged CROSS_PARTITION_LABEL)"
     },
     "validation": {
       "file": "spx_features_validation_2020_2021.csv",
@@ -24,11 +31,17 @@
         "2021-12-31"
       ],
       "row_count": 505,
-      "sha256": "bd23a5fcbb88ee1dd0b13d6a9fd5d0b3952079843b64de84bf814cac042fff69",
-      "q_valid_count": 496,
-      "q_missing_count": 9,
-      "q_missing_rate_pct": 1.782178217821782,
-      "x_valid_count": 505
+      "sha256": "8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7",
+      "q_valid_all5_count": 496,
+      "q_missing_all5_count": 9,
+      "q_missing_all5_pct": 1.782178217821782,
+      "q_valid_30d_only_count": 496,
+      "q_missing_30d_only_count": 9,
+      "q_missing_30d_only_pct": 1.782178217821782,
+      "term_slope_missing_count": 9,
+      "x_valid_all6_count": 505,
+      "rate_fallback_count": 0,
+      "terminal_label_note": "Row 2021-12-31 target_r_next is strictly NaN (UNOBSERVED_WITHOUT_TEST_CLOSE) to prevent leaking test close 2022-01-03"
     }
   },
   "feature_units": {
@@ -46,10 +59,5 @@
     "dsemi_20d": "Decimal annualized 20-day downside semivariance",
     "dd_20d": "Trailing 20-day maximum drawdown (negative decimal or 0.0)",
     "target_r_next": "Next-day log return ln(S_{t+1} / S_t) (forecast target label)"
-  },
-  "unresolved_gates_and_caveats": [
-    "Information Cutoff Gate (OD-6): Option quotes have vendor readtime '16:00', but 16:15 ET option trading lookahead risk remains unverified across product vintages. Operational model training remains strictly gated.",
-    "Rate Input Ingestion (OD-1): Daily continuous rate r_cont converted from 13-week T-Bill discount yield (^IRX) via r_cont = -(365/91)*ln(1 - d*(91/360)). Multi-tenor term-structure matching remains open.",
-    "Early Strike Breadth: 2010-2011 option chains suffer from high missingness in Q_t (~70%) due to standard monthly-only expiries lacking 30-day bracketing tenors prior to weekly option introduction in mid-2012."
-  ]
+  }
 }
