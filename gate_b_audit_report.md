@@ -1,7 +1,7 @@
-# Gate B Audit Report: Calendar Continuity, Early Strike Breadth, Quote Timing, Rate Ingestion, and Candidate Feature Datasets
+# Stage 7 Readiness & Gate B Closure Review: Calendar Continuity, Early Strike Breadth, Quote Timing, Rate Ingestion, and Candidate Feature Datasets
 
-**Document Status:** Working Audit Report & Quality Review (Stage 6 / Gate B Deliverable)  
-**Date:** 21 October 2026 (Revised & Corrected)  
+**Document Status:** Formal Gate B Closure Review & Stage 7 Readiness Assessment  
+**Date:** 22 October 2026 (Revised & Comprehensive)  
 **Author:** Antigravity (Advanced Agentic Coding Pair Programmer)  
 **Governing Documents:** [research_protocol.md](file:///D:/IE612_Project/research_protocol.md), [stage5_modeling_specification.md](file:///D:/IE612_Project/stage5_modeling_specification.md), [stage4_feature_pipeline.md](file:///D:/IE612_Project/stage4_feature_pipeline.md), [data_feasibility_audit.md](file:///D:/IE612_Project/data_feasibility_audit.md), [implementation.md](file:///D:/IE612_Project/implementation.md)
 
@@ -9,13 +9,14 @@
 
 ## 1. Executive Summary & Gate B Determination
 
-### 1.1 Gate B Determination: **BLOCKED / QUALIFIED (CANNOT BE CLAIMED FULLY PASSED)**
-In accordance with project governance, empirical audit findings, and anti-leakage disciplines:
-1. **Test Partition Boundary Crossing & Disclosure:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was initially downloaded through January 2022, thereby accessing the **2022-01-03 closing price (`4796.56`)** across the test boundary to compute the terminal validation return $r_{t+1}$. This test-period cash close was committed to the repository history in commit `cee01a1`. Therefore, **the test partition seal was breached and remains permanently recorded in Git history, so it cannot be claimed as intact or untouched**. In the active working tree and corrected datasets, cached cash closes have been truncated to $\le \text{2021-12-31}$, and terminal target returns on both `2019-12-31` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` (`UNOBSERVED_WITHOUT_TEST_CLOSE`) have been set strictly to `NaN` to guarantee partition boundary purity.
-2. **Datasets are Candidate Outputs, NOT Permanently Frozen:** Neither the Development nor Validation feature datasets are treated as permanently frozen. They serve as audit-stage candidate datasets pending resolution of the information cutoff, rate ingestion policy, and test boundary rules.
-3. **Information Cutoff Gate (OD-6) Unresolved:** While vendor readtimes uniformly report `'16:00'`, OptionsDX documentation does not establish whether quotes reflect 16:00:00 ET instantaneous snapshots or 16:15:00 ET closing quotes. Put-call parity guarantees internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$. Operational model training remains **strictly gated**.
-4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition. Furthermore, call-wing liquidity truncates at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of early sessions.
-5. **Session Continuity Fails Annual 1.0% Threshold in 5 Years:** While aggregate 12-year missingness is $0.993\%$, annual missingness exceeds the 1.0% tolerance in five separate calendar years (2011, 2014, 2019, 2020, 2021). Continuity cannot be described as a clean pass across every year.
+### 1.1 Gate B Determination: **BLOCKED / QUALIFIED (STAGE 7 MODEL FITTING NOT AUTHORIZED)**
+In accordance with project governance, empirical audit findings, anti-leakage disciplines, and course protocol:
+1. **Stage 7 Model Fitting is NOT Authorized:** Under the governing protocol, no forecasting models ($B0$–$B4$, $R1$) or latent Hidden Markov Models (HMM) may be trained, tuned, or fitted until all Gate B blockers are resolved and approved.
+2. **Test Partition Cash Close Breach & Permanent Git Retention:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was downloaded through January 2022 in Stage 6, thereby accessing both the **2022-01-03 closing price (`4796.56`)** and the **2022-01-04 closing price (`4793.54`)**, and deriving the terminal validation return $r_{t+1}$ on `2021-12-31` (`0.0063538`). All three test-period values were committed in commit `cee01a1` and remain permanently recorded in the Git repository history. Therefore, **the test partition cannot be described as sealed or untouched**. In the active working tree and candidate datasets, cached cash closes have been truncated to $\le \text{2021-12-31}$, and terminal target returns on both `2019-12-31` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` (`UNOBSERVED_WITHOUT_TEST_CLOSE`) have been set strictly to `NaN` to guarantee partition boundary purity.
+3. **Information Cutoff Gate (OD-6) Unresolved:** Vendor readtime strings uniformly report `'16:00'`, even on unscheduled half-days. However, Cboe SPX options historically traded until 16:15:00 ET, while S&P 500 cash equity closed strictly at 16:00:00 ET. Synthetic forward parity proves internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$. The available data cannot establish synchronization without lookahead risk. Concrete alternative reference price proposals are submitted herein for approval.
+4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition (with 205 missing in 2010–2011 alone). A fixed Complete-Case Filtering policy is formalized herein.
+5. **Session Continuity Fails Annual 1.0% Threshold in 5 Years:** While aggregate 12-year missingness is $0.993\%$, annual missingness exceeds the 1.0% tolerance in five separate calendar years (2011, 2014, 2019, 2020, 2021). Continuity is not a clean annual pass.
+6. **Datasets are Candidate Outputs, NOT Permanently Frozen:** Neither the Development nor Validation feature datasets are treated as permanently frozen. They serve as candidate audit deliverables pending formal resolution of the information cutoff and test seal governance.
 
 ---
 
@@ -100,12 +101,54 @@ Every active session across 2010, 2011, and 2012 (**745 total trading sessions**
 
 ---
 
-## 4. Check 3: Quote Timestamps and Cash Synchronization
+## 4. Check 3: Quote Timestamps, Cash Synchronization, and Look-Ahead Mitigation
 
-* **Uniform Vendor Readtime:** Across all 3,021 sessions in 2010–2021, `QUOTE_READTIME` is stamped `'16:00'`.
-* **Absence of Early Close Timestamps:** Scheduled half-days (e.g. Black Friday, Christmas Eve) never report `'13:00'`.
-* **The 16:00 vs. 16:15 ET Lookahead Wedge:** S&P 500 cash equity closes strictly at 16:00:00 ET ($S_t$). SPX options historically traded until 16:15:00 ET. If option quotes reflect 16:15 ET trading, $Q_t$ incorporates 15 minutes of post-close news, leaking forward-looking information into the target return denominator $r_{t+1} = \ln(S_{t+1}/S_t)$. Put-call parity alone proves internal quote consistency, not cash synchronization.
-* **Status:** Operational model training remains **strictly gated** until quote timing is empirically verified or an alternative cutoff is formally pre-specified.
+### 4.1 Available Timestamp Evidence & Vendor Invariance
+Every active trading session across the 12-year historical sample (3,021 expected sessions, 2,994 observed option dates in 2010–2021) was audited for quote timestamp integrity:
+1. **Uniform Vendor Readtime String:** Across all 3,021 sessions, the vendor field `QUOTE_READTIME` reports the invariant text string `'YYYY-MM-DD 16:00'`, and the numeric field `QUOTE_TIME_HOURS` reports `16.0`.
+2. **Absence of Early Close Timestamps:** On official exchange half-days where NYSE and Cboe halted trading early at 13:00:00 ET (e.g. Black Friday 2020-11-27, Christmas Eve 2020-12-24), OptionsDX files still report `'16:00'`.
+3. **Implication:** The vendor readtime string `'16:00'` is a static batch processing label, not an authoritative, exchange-synchronized timestamp. It provides no second- or millisecond-level precision regarding the exact moment quotes were sampled.
+
+### 4.2 Cash Equity vs. Option Market Microstructure (The 15-Minute Lookahead Wedge)
+* **Cash Equity Close ($S_t$):** S&P 500 cash equity trading on the primary listing venues (NYSE and NASDAQ) closes strictly at 16:00:00 ET. S&P Dow Jones Indices calculates the official benchmark cash close ($S_t$, ticker `^GSPC`) based on the closing auction prices of the 500 constituent stocks.
+* **Option Market Hours:** Standard SPX index options on Cboe historically traded until 16:15:00 ET (4:15 PM Eastern / 3:15 PM Central). CME S&P 500 futures contracts likewise trade through 16:15:00 ET.
+* **Empirical Divergence:** Because option market makers continuously update quotes between 16:00 and 16:15 ET based on active CME index futures, option quotes at 16:15 ET reflect price discovery and post-16:00 news. The vendor's recorded `UNDERLYING_LAST` diverges systematically from the official 16:00:00 ET cash close $S_t$:
+  - **2020-01-02 (Calm):** OptionsDX `UNDERLYING_LAST` = `3258.14`, Cash Close $S_t$ = `3257.85` ($+0.29$ index pts, $+0.89$ bps).
+  - **2020-01-15 (Calm):** OptionsDX `UNDERLYING_LAST` = `3289.76`, Cash Close $S_t$ = `3289.29` ($+0.47$ index pts, $+1.43$ bps).
+  - **2020-03-03 (Crisis):** OptionsDX `UNDERLYING_LAST` = `3002.74`, Cash Close $S_t$ = `3003.37` ($-0.63$ index pts, $-2.10$ bps).
+* **The Lookahead Hazard:** If option quotes reflect 16:15:00 ET trading, conditioning on option feature vector $Q_t$ to forecast next-day return $r_{t+1} = \ln(S_{t+1}/S_t)$ introduces forward-looking information: $Q_t$ incorporates 15 minutes of price discovery that occurred *after* the denominator $S_t$ was frozen at 16:00:00 ET.
+
+### 4.3 Why Synthetic-Forward Parity Does NOT Resolve the Cutoff
+Synthetic forward parity:
+$$F_{\text{parity}} = K^* + e^{r\tau}(C(K^*, \tau) - P(K^*, \tau))$$
+verifies that the call and put quotes at strike $K^*$ were captured synchronously *with each other* and are free from static cross-sectional arbitrage.
+> [!IMPORTANT]
+> **Synthetic forward parity proves internal surface consistency only.** If call and put quotes were both captured at 16:14:59 ET, put-call parity holds with extreme precision, but the entire surface embeds 14 minutes and 59 seconds of post-close information relative to the 16:00:00 ET equity close $S_t$. Parity cannot establish temporal synchronization with the cash index.
+
+### 4.4 Concrete Alternative Forecast Origin & Reference Price Proposals (Submitted for Approval)
+Because OptionsDX data lacks tick-level timestamps, cash synchronization cannot be empirically proven. To establish a defensible, airtight research design, the following three precisely defined alternative proposals are submitted for instructor/user decision:
+
+1. **Proposal A: Lagged Close-to-Close Return ($r_{t+1 \to t+2} = \ln(S_{t+2}/S_{t+1})$) [Recommended for Operational Realism]**
+   - **Forecast Origin / Information Cutoff:** EOD of day $t$ (all $X_t$, $Q_t$, and causal HMM filtered probability $\pi_t$ formed using information available through 16:15:00 ET on day $t$).
+   - **Trade / Evaluation Window:** The forecast density targets the return between the next session's cash close $S_{t+1}$ (16:00:00 ET on day $t+1$) and the subsequent cash close $S_{t+2}$ (16:00:00 ET on day $t+2$).
+   - **Target Definition:**
+     $$r_{t+1 \to t+2} = \ln\left(\frac{S_{t+2}}{S_{t+1}}\right)$$
+   - **Lookahead Mitigation:** The evaluation return window begins a full 23 hours and 45 minutes *after* the feature cutoff at $t$. Lookahead bias is mathematically impossible.
+   - **Course Protocol Impact:** Aligns with realistic portfolio rebalancing where trades are queued overnight and executed at market close on $t+1$.
+
+2. **Proposal B: Next-Day Intraday Open-to-Close Return ($r_{t+1}^{\text{open} \to \text{close}} = \ln(S_{t+1}^{\text{close}} / S_{t+1}^{\text{open}})$)**
+   - **Forecast Origin / Information Cutoff:** EOD of day $t$ (16:15:00 ET).
+   - **Trade / Evaluation Window:** Initiated at the official NYSE cash open on day $t+1$ ($S_{t+1}^{\text{open}}$ at 09:30:00 ET) and liquidated at the cash close ($S_{t+1}^{\text{close}}$ at 16:00:00 ET).
+   - **Target Definition:**
+     $$r_{t+1}^{\text{intraday}} = \ln\left(\frac{S_{t+1}^{\text{close}}}{S_{t+1}^{\text{open}}}\right)$$
+   - **Lookahead Mitigation:** The position opens 17 hours and 15 minutes after the feature cutoff, isolating next-day cash trading from overnight news.
+
+3. **Proposal C: Primary Close-to-Close with Bounded Lookahead Margin ($r_{t+1} = \ln(S_{t+1}/S_t)$)**
+   - **Forecast Origin:** Retain $r_{t+1} = \ln(S_{t+1}/S_t)$ as the primary theoretical target, but formally define the 15-minute price wedge:
+     $$\delta_t = \ln\left(\frac{\text{UNDERLYING\_LAST}_t}{S_t}\right)$$
+   - **Evaluation Hurdle:** The standard deviation of $\delta_t$ is empirically quantified at $\sigma_{\delta} \approx 2.1 \text{ bps}$. Require that any statistical outperformance of challenger model $R1$ over baseline $B4$ (e.g. Diebold-Mariano test or log-score differential $\bar{d}$) be shown to exceed the 15-minute wedge variance $\text{Var}(\delta_t) \approx 4.4 \times 10^{-8}$. If gains disappear under a 2 bps noise perturbation, the outperformance cannot be attributed to genuine predictive skill.
+
+**Decision Gate Recommendation:** Adopt **Proposal A (Lagged Close-to-Close)** or **Proposal B (Intraday Open-to-Close)** to completely eliminate lookahead risk, pending instructor approval before Stage 7. Model fitting remains **STRICTLY GATED**.
 
 ---
 
@@ -151,16 +194,35 @@ $$Q_t = [\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_I
 
 ### 6.2 Strict Partition Boundary Enforcement on Target Return ($r_{t+1}$)
 1. **Validation Terminal Row (`2021-12-31`):**
-   - The next exchange session was `2022-01-03`, which resides in the sealed test partition.
-   - To prevent test data persistence, $S_{\text{next}}$ and $r_{t+1}$ on `2021-12-31` are set strictly to `NaN` and flagged `UNOBSERVED_WITHOUT_TEST_CLOSE`.
+   - The next exchange session was `2022-01-03`, which resides in the test partition.
+   - To prevent test data persistence, $S_{\text{next}}$ and $r_{t+1}$ on `2021-12-31` are set strictly to `NaN` and flagged `UNOBSERVED_WITHOUT_TEST_CLOSE (test close 2022-01-03 omitted to protect partition purity)`.
 2. **Development Terminal Row (`2019-12-31`):**
    - The next exchange session was `2020-01-02`, which resides in the validation partition.
    - To guarantee complete partition boundary purity and eliminate cross-partition target leakage, $S_{\text{next}}$ and $r_{t+1}$ on `2019-12-31` are set strictly to `NaN` and flagged `UNOBSERVED_WITHOUT_VALIDATION_CLOSE (validation close 2020-01-02 omitted to protect partition purity)`.
-3. **Cash Close Dataset Truncation & Git History Retention:**
-   - [`output/stage6_features/spx_daily_closes_2009_2021.csv`](file:///D:/IE612_Project/output/stage6_features/spx_daily_closes_2009_2021.csv) was truncated in the active working tree to remove all 2022 dates, terminating strictly on `2021-12-31` (3,063 closes from 2009-11-02 to 2021-12-31).
-   - However, the initial Stage 6 commit (`cee01a1`) included cash closes through `2022-01-04` and computed validation target $r_{t+1}$ on `2021-12-31`. While purged from the active working tree, that test-period close remains permanently recorded in the Git repository history.
 
-### 6.3 Candidate Dataset Manifest & Hashes
+### 6.3 Forensic Test-Period Breach Inventory (Git History vs. Active Working Tree)
+An exhaustive forensic audit of the repository's Git history and current working-tree artifacts was executed to account for all test-period data:
+1. **Commit `cee01a18edb9daf88ae7804093b560318ac26d7f` (2026-10-21 21:17:00 +0530):**
+   - In `output/stage6_features/spx_daily_closes_2009_2021.csv`:
+     - Line 3065: `2022-01-03,4796.56005859375` (S&P 500 cash close on 1st session of test partition)
+     - Line 3066: `2022-01-04,4793.5400390625` (S&P 500 cash close on 2nd session of test partition)
+   - In `output/stage6_features/spx_features_validation_2020_2021.csv`:
+     - Row 505 (session date `2021-12-31`):
+       - `S_next = 4796.56005859375`
+       - `target_r_next = 0.006353824170388397` (derived as $\ln(4796.56005859375 / 4766.18017578125)$)
+   - In `scratch/batch_feature_pipeline.py`:
+     - Line 53 executed `yf.download('^GSPC', start='2009-11-01', end='2022-01-05', progress=False)`.
+2. **Commits `22fb522` and `bd6bfa3` (Active Working-Tree State):**
+   - In [`output/stage6_features/spx_daily_closes_2009_2021.csv`](file:///D:/IE612_Project/output/stage6_features/spx_daily_closes_2009_2021.csv), all 2022 dates were purged. The file terminates strictly on `2021-12-31` (3,063 lines).
+   - In [`output/stage6_features/spx_features_validation_2020_2021.csv`](file:///D:/IE612_Project/output/stage6_features/spx_features_validation_2020_2021.csv), the terminal return $r_{t+1}$ on `2021-12-31` was nulled to `NaN`.
+   - In [`output/stage6_features/spx_features_development_2010_2019.csv`](file:///D:/IE612_Project/output/stage6_features/spx_features_development_2010_2019.csv), the terminal return $r_{t+1}$ on `2019-12-31` was nulled to `NaN`.
+3. **Status Distinction & Inviolable Governance:**
+   - **Current Working Tree:** Strictly purged of all 2022 cash closes and cross-partition labels.
+   - **Git Repository History:** Commits `cee01a1` permanently retains both `2022-01-03` and `2022-01-04` cash closes and the derived return label. In accordance with research integrity and non-rewriting rules, Git history is **NOT** rewritten.
+   - **Test Partition Verdict:** The test partition **CANNOT be described as sealed, untouched, or unaccessed**.
+   - **Option Bundles Protected:** The 24 raw OptionsDX monthly bundles for 2022–2023 in `Data/SPX Options Chain/` remain strictly unopened and unparsed.
+
+### 6.4 Candidate Dataset Manifest & Hashes
 
 ```
 +--------------------------------------------------------------------------------------------------------------------+
@@ -170,15 +232,89 @@ $$Q_t = [\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_I
 +-------------+----------------------------------------+--------------------------+-------+-----------+-----------+------------------------------------------------------------------+
 | Development | spx_features_development_2010_2019.csv | 2010-01-04 to 2019-12-31 | 2,516 |   2,233   |   2,516   | 138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e |
 | Validation  | spx_features_validation_2020_2021.csv  | 2020-01-02 to 2021-12-31 |   505 |     496   |     505   | 8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7 |
-| Test        | SEALED (2022-2023)                     | 2022-01-01 to 2023-12-31 |   --  |    --     |    --     | UNPARSED / SEALED                                                |
+| Test        | COMPROMISED (Raw Bundles Unopened)     | 2022-01-01 to 2023-12-31 |   --  |    --     |    --     | Cash Closes Breached in Git History; Options Unopened            |
 +--------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 7. Gate B Final Recommendation & Required Conditions Before Modeling
+## 7. Check 6: Early Missing-Feature Policy (2010–2011 Structural Deficit)
 
-Work may not proceed to forecasting model fitting (Stage 7) until the following open conditions are formally resolved:
-1. **Resolution of Information Cutoff Gate (OD-6):** Empirically verify whether OptionsDX `'16:00'` quotes reflect 16:00:00 ET instantaneous snapshots or 16:15:00 ET closing quotes, or specify a defensible cutoff adjustment.
-2. **Administrative Decision on Test Calendar Audit:** Confirm whether test partition continuity should be formally audited at Gate D or if an administrative waiver applies.
-3. **Handling of 2010–2011 Structural Missingness:** Approve whether walk-forward training will omit the 283 incomplete sessions in 2010–2011 or start expanding walk-forward training in mid-2012 following the weekly option expansion.
+### 7.1 Empirical Quantification of Incomplete Feature Rows
+A session-by-session diagnostic of feature completeness across the 10-year Development partition ($Q_t \in \mathbb{R}^5, X_t \in \mathbb{R}^6$) reveals extreme temporal concentration of missingness:
+
+```
++-----------------------------------------------------------------------------------------------------------------------+
+|                    Development Partition (2010–2019) Year-by-Year Feature Completeness Diagnostics                    |
++-----------------------------------------------------------------------------------------------------------------------+
+| Year  | Total Sessions | Valid Q_t (All 5) | Missing Q_t (Any) | Pct Missing | Missing 30d Tenors | Missing 60d Slope | Missing Option Files |
++-------+----------------+-------------------+-------------------+-------------+--------------------+-------------------+----------------------+
+| 2010  |      252       |        138        |        114        |   45.24%    |        102         |        114        |          2           |
+| 2011  |      252       |        161        |         91        |   36.11%    |         85         |         91        |          7           |
+| 2012  |      250       |        207        |         43        |   17.20%    |         34         |         43        |          2           |
+| 2013  |      252       |        235        |         17        |    6.75%    |          0         |         17        |          0           |
+| 2014  |      252       |        241        |         11        |    4.37%    |          3         |         11        |          3           |
+| 2015  |      252       |        252        |          0        |    0.00%    |          0         |          0        |          0           |
+| 2016  |      252       |        251        |          1        |    0.40%    |          1         |          1        |          1           |
+| 2017  |      251       |        250        |          1        |    0.40%    |          1         |          1        |          1           |
+| 2018  |      251       |        251        |          0        |    0.00%    |          0         |          0        |          0           |
+| 2019  |      252       |        247        |          5        |    1.98%    |          5         |          5        |          5           |
++-------+----------------+-------------------+-------------------+-------------+--------------------+-------------------+----------------------+
+| Total |    2,516       |      2,233        |        283        |   11.25%    |        231         |        283        |         21           |
++-----------------------------------------------------------------------------------------------------------------------+
+```
+
+* **Severe Concentration in 2010–2011:** Out of 283 total missing sessions, **205 sessions (72.44%)** occur in 2010 and 2011 alone.
+* **The Weekly Option Regime Shift (Mid-2012):**
+  - **2012 H1 (Jan–Jun 2012):** 37 missing sessions out of 125 (**29.60% missing**).
+  - **2012 H2 (Jul–Dec 2012):** Exactly 6 missing sessions out of 125 (**4.80% missing**, with 0 missing in July, August, November, December).
+  - Prior to July 2012, 242 sessions were incomplete (**85.51%** of all development missingness). From 2013 through 2019, missingness averaged just **1.99%**.
+
+### 7.2 Evaluation of Policy Options
+1. **Policy Option 1: Complete-Case Filtering on Supervised Origins (RECOMMENDED PRIMARY BASELINE)**
+   - *Rule:* Retain the full 2010–2019 calendar timeline. When training supervised density models ($B2$, $B4$, $R1$) at refit origin $\tau$, include only past origins $t \le \tau - 1$ where all required features in $Z_t$ are valid (`valid_Q_all5 == True`).
+   - *Sample Size:* Yields **2,233 valid training pairs** in Development (loss of 283 rows or 11.25%) and **496 valid evaluation pairs** in Validation (loss of 9 rows or 1.78%).
+   - *Strengths:* Involves zero synthetic data imputation or artificial carryforward; strictly reflects authentic market observations.
+2. **Policy Option 2: Truncate Development Sample to Weekly Option Regime (`2012-07-02` Start) [RECOMMENDED ROBUSTNESS BENCHMARK]**
+   - *Rule:* Start the formal training sample on **2012-07-02**, directly matching Cboe's full weekly option rollout.
+   - *Sample Size:* Development span becomes 2012-07-02 to 2019-12-31 (1,888 exchange sessions). Retains **1,847 complete sessions** (only 41 missing sessions across 7.5 years, a missing rate of just **2.17%**).
+   - *Strengths:* Provides a highly consistent option surface without multi-week monthly expiration gaps.
+3. **Policy Option 3: Multi-Day Forward-Fill Imputation [REJECTED]**
+   - *Rule:* Carrying forward $Q_{t}$ across 14-to-21-day gaps in 2010–2011.
+   - *Verdict:* **REJECTED**. Imputing 30-day option implied volatility and skewness across 3 calendar weeks creates stale ghost features that severely misstate volatility dynamics.
+
+### 7.3 Latent Regime HMM Emission Rule
+* **Historical State Completeness:** The historical state vector $X_t \in \mathbb{R}^6$ ($r_{1d}, r_{5d}, \text{RV}_{5d}, \text{RV}_{20d}, \text{DSemi}_{20d}, \text{DD}_{20d}$) is **100.0% valid on all 2,516 sessions** in Development and all 505 sessions in Validation.
+* **Causal Filtering Continuity:** The causal forward filter $\pi_t = P(S_t = k \mid Y_{1:t})$ can run continuously across every active trading day without missing steps if emissions $Y_t$ are specified on $X_t$, or if conditional Gaussian marginalization $P(Y_t \mid S_t = k) = \int P(X_t, Q_t \mid S_t = k) dQ_t = \mathcal{N}(X_t; \mu_{X,k}, \Sigma_{XX,k})$ is applied on incomplete option sessions.
+
+---
+
+## 8. Stage 7 Readiness Decision & Gate B Closure Prerequisites
+
+### 8.1 Gate B Determination: **BLOCKED / QUALIFIED**
+Gate B **CANNOT BE CLOSED** and Stage 7 forecasting model fitting is **STRICTLY NOT AUTHORIZED** under the current protocol.
+
+### 8.2 Remaining Blockers and Closure Requirements
+
+```
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                  Gate B Blockers & Stage 7 Closure Action Matrix                                                   |
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+| Blocker Ref | Blocker Description                           | Current Audit Status    | Required Evidence / Action to Close Blocker                |
++-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
+| BLK-1       | Information Cutoff & Return Reference Timing  | BLOCKED (OD-6)          | Formal instructor/user selection of Proposal A (Lagged     |
+|             | (16:00 cash close vs. 16:15 option trading)   |                         | Close-to-Close) or Proposal B (Open-to-Close).             |
++-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
+| BLK-2       | Test Partition Cash Close Breach in Git       | BLOCKED (Recorded in    | Formal administrative acknowledgment that 2022-01-03/04    |
+|             | History (2022-01-03 & 2022-01-04 in cee01a1)  | Commit cee01a1)         | cash closes remain in Git history, with raw bundles sealed |
++-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
+| BLK-3       | Early Missing-Feature Policy (2010–2011)      | PENDING APPROVAL        | Formal approval of Complete-Case Filtering (2,233 dev rows)|
+|             | (283 incomplete development rows, 72.4% early)|                         | with mid-2012 sensitivity benchmark.                       |
++-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
+| BLK-4       | Full 14-Year Calendar Continuity Audit        | BLOCKED BY TEST SEAL    | Approval to defer 2022–2023 daily continuity audit to      |
+|             | (2022–2023 test sessions unaudited)           |                         | Gate D to preserve test bundle unparsed status.            |
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+```
+
+### 8.3 Operational Authority
+* **Model Fitting Prohibited:** Code implementation of models $B0$–$B4$ and $R1$ in `src/models/` may be drafted in skeleton form, but **no training routines, gradient steps, parameter estimation, or walk-forward loops may be executed** until Blockers BLK-1, BLK-2, BLK-3, and BLK-4 are formally closed.

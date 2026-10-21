@@ -330,9 +330,10 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
   - Candidate feature datasets generated: Development (2,516 rows, 2,233 all-5 valid [88.75%],
     283 missing [11.25%], SHA-256: 138fa68a...) and Validation (505 rows, 496 all-5 valid [98.22%],
     9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
-  - TEST BOUNDARY DISCLOSURE: ^GSPC close for 2022-01-03 accessed during download and committed
-    in commit cee01a1 (retained in Git history). Test seal cannot be claimed as intact. Terminal
-    boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity.
+  - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download
+    and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history).
+    The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31
+    and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remain unopened.
   - BLOCKERS: 14-year calendar audit incomplete; 16:00 vs 16:15 ET cutoff remains unverified.
     Model training remains strictly gated. Cannot claim Gate B passed.
                         |
