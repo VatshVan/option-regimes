@@ -19,8 +19,8 @@ $$\text{Predictive Comparison: } \quad p(r_{t+1} \mid Q_t, X_t, \pi_t) \quad \te
 Stage 5 is **strictly a specification and protocol finalization stage**. In compliance with project governance and anti-leakage disciplines:
 1. **No Model Training or Fitting:** No baseline, MDN, or HMM parameters are estimated or fitted during this stage.
 2. **No Walk-Forward Execution:** No rolling out-of-sample predictions are generated.
-3. **No Test Partition Processing:** The untouched 2022–2023 test data remains strictly uninspected, unparsed, and unaccessed.
-4. **Preservation of Limitations:** The qualified status of Gate A, the discrete finite-grid nature of option-moment quadrature (without tail extrapolation), the unverified full 14-year calendar session continuity, the unverified early-sample strike depth (2010–2012), and the illustrative status of demonstration interest rates are preserved without alteration.
+3. **No Test Partition Processing (Stage 5 Scope):** Raw 2022–2023 option bundles remained uninspected and unparsed during Stage 5. (Note: As disclosed in Stage 6, January 3 and 4, 2022 cash closes were subsequently retrieved in commit `cee01a1` and remain in Git history; raw option bundles remain unopened).
+4. **Preservation of Limitations:** The qualified status of Gate A, the discrete finite-grid nature of option-moment quadrature (without tail extrapolation), the completed 2010–2021 session continuity audit alongside the unaudited 2022–2023 test period continuity, the audited early-sample strike depth deficit (2010–2012), and the illustrative status of demonstration interest rates are documented without alteration.
 
 ---
 
@@ -334,8 +334,10 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
     and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history).
     The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31
     and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remain unopened.
-  - BLOCKERS: 14-year calendar audit incomplete; 16:00 vs 16:15 ET cutoff remains unverified.
-    Model training remains strictly gated. Cannot claim Gate B passed.
+  - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles
+    (deferral to Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending
+    approval; Proposal C withdrawn); complete-case filtering policy pending approval.
+    Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
                         |
                         v
   [Gate C: Baseline & Density Stability Gate] -> MODELING PREREQUISITE

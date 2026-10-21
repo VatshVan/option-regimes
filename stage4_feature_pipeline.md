@@ -16,7 +16,7 @@ This document defines the mathematical, algorithmic, and engineering architectur
 
 In accordance with Stage 4 boundaries:
 * **No Predictive Models Fit:** No forecasting models, HMM filters, or density estimators have been estimated.
-* **No Test Period Contamination:** The untouched 2022–2023 test partition remains strictly sealed and unread.
+* **No Test Period Contamination (Stage 4 Scope):** Raw 2022–2023 option bundles remained unopened and unparsed during Stage 4. (Note: As disclosed in Stage 6, January 3 and 4, 2022 cash closes were subsequently retrieved in commit `cee01a1` and remain in Git history; raw option bundles remain unopened).
 * **Bounded Demonstration Only:** Code execution was restricted to the two Stage 3 authorized demonstration dates (`2020-01-15` and `2020-03-03`). No full multi-year matrix has been constructed.
 
 ---

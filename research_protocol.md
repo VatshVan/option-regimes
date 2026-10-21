@@ -342,9 +342,9 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
   The sample comprises exactly 14 full calendar years (168 monthly bundles). The partition boundaries are aligned cleanly with complete calendar years to avoid cutting through intra-year macro regimes:
   * **Development / Initial Training Segment (2010–2019, 10 years, ~71.4%):** Used for pipeline calibration, baseline stability tests, and initial in-sample parameter estimation across multiple market cycles.
   * **Validation Segment (2020–2021, 2 years, ~14.3%):** Spans the 2020 Covid shock and recovery. Used exclusively for hyperparameter tuning (number of HMM regimes $K \in \{2, 3\}$, regularization penalties, neural network layer width).
-  * **Untouched Held-Out Test Segment (2022–2023, 2 years, ~14.3%):** Spans the 2022 rate-hiking cycle / bear market and 2023 disinflation rally. Completely held out and scored only once.
+  * **Held-Out Test Segment (2022–2023, 2 years, ~14.3%):** Spans the 2022 rate-hiking cycle / bear market and 2023 disinflation rally. Scored only once at Gate D. Raw 2022–2023 option bundles remain unopened. (Note: January 3 and 4, 2022 cash closes and derived validation return were retrieved in Stage 6 commit `cee01a1` and remain in Git history; the test partition cannot be described as sealed or untouched).
   *(Note on Calendar Partitioning vs. Nominal Counts: This partition is strictly defined by complete calendar-year spans: 2010–2019 [Train, 10 years, ~71.4%], 2020–2021 [Val, 2 years, ~14.3%], and 2022–2023 [Test, 2 years, ~14.3%]. This preserves complete annual macro regimes. Exact session counts will be computed directly from the full calendar audit without assuming nominal totals in advance).*
-* **Freezing Rule:** The test segment is sealed. It must not be processed, evaluated, or scored until all model architectures, hyperparameters, data cleaning rules, and calibration thresholds are permanently frozen.
+* **Freezing Rule:** The test segment raw option bundles remain unopened and must not be processed, evaluated, or scored until all model architectures, hyperparameters, data cleaning rules, and calibration thresholds are permanently frozen.
 
 ### 6.2 Refit Cadence and Walk-Forward Protocol
 * **Walk-Forward Refit:** Expanding window design. Models are refit periodically on an established cadence.
@@ -468,8 +468,8 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
     283 missing [11.25%], SHA-256: 138fa68a...) and Validation (505 rows, 496 all-5 valid [98.22%],
     9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
   - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history). The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity. Raw 2022–2023 option bundles remain unopened.
-  - BLOCKERS: 14-year calendar audit incomplete; 16:00 vs 16:15 ET cutoff remains unverified.
-    Model training remains strictly gated. Cannot claim Gate B passed.
+  - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles (deferral to Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending approval; Proposal C withdrawn); complete-case filtering policy pending approval. Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
+
                         |
                         v
   [Gate C: Baseline Stability Gate] -> MODELING PREREQUISITE
@@ -507,7 +507,7 @@ The following operational choices are explicitly labeled as **UNRESOLVED** and m
 
 | Unresolved Decision | Governing Constraints | Provisional Default | Action Required in Stage 2 Audit |
 |---|---|---|---|
-| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **Gate B Status (Stage 6):** 2010-2021 audited (3,021 expected sessions, 2,994 observed, 30 missing sessions, 0.993% missing rate <= 1.0%). Test partition (2022-2023) maintained sealed; 14-year audit incomplete due to test seal. |
+| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **Gate B Status:** 2010–2021 daily session continuity audited (3,021 expected, 2,994 observed, 30 missing, 0.993% aggregate missing rate). 2022–2023 test period daily continuity unaudited to avoid opening raw test option bundles; January 3 and 4, 2022 cash closes and derived label were committed in cee01a1 and remain in Git history. |
 | **2. Exact Split Boundary Dates** | Train/Val/Test calendar span aligned with macro regimes. | **Train:** 2010-2019 (~71.4%) <br>**Val:** 2020-2021 (~14.3%) <br>**Test:** 2022-2023 (~14.3%) | **Provisional Default Fixed:** Calendar-year partition (~71.4% / 14.3% / 14.3% by year span) approved; exact usable session counts will be computed from the full calendar audit without assuming nominal totals. |
 | **3. Risk-Free Rate Source & Curve** | Forward inversion requires reliable daily risk-free rates matching contract DTE. | **Daily 13-week T-Bill (^IRX) or FRED 1M/3M CMT** | **Gate B Status (Stage 6):** Continuous day-count conversion derived and implemented in interim datasets ({\\text{cont}} = -\\frac{365}{91} \\ln(1 - d \\frac{91}{360})$). Multi-tenor curve matching remains open. Stage 4 demonstration rates (.508\\%$ and .918\\%$) preserved as illustrative benchmarks. |
 | **4. Density Architecture Selection** | Balance between flexible multi-modality and numerical training stability on daily series. | **Student-$ Location-Scale Regression** (Primary fallback: 2-component MDN) | Evaluate MDN log-likelihood stability on validation split. If loss divergence or mode collapse occurs, freeze Student-$. |

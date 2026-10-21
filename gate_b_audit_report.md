@@ -14,8 +14,8 @@ In accordance with project governance, empirical audit findings, anti-leakage di
 1. **Stage 7 Model Fitting is NOT Authorized:** Under the governing protocol, no forecasting models ($B0$–$B4$, $R1$) or latent Hidden Markov Models (HMM) may be trained, tuned, or fitted until all Gate B blockers are resolved and approved.
 2. **Test Partition Cash Close Breach & Permanent Git Retention:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was downloaded through January 2022 in Stage 6, thereby accessing both the **2022-01-03 closing price (`4796.56`)** and the **2022-01-04 closing price (`4793.54`)**, and deriving the terminal validation return $r_{t+1}$ on `2021-12-31` (`0.0063538`). All three test-period values were committed in commit `cee01a1` and remain permanently recorded in the Git repository history. Therefore, **the test partition cannot be described as sealed or untouched**. In the active working tree and candidate datasets, cached cash closes have been truncated to $\le \text{2021-12-31}$, and terminal target returns on both `2019-12-31` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` (`UNOBSERVED_WITHOUT_TEST_CLOSE`) have been set strictly to `NaN` to guarantee partition boundary purity.
 3. **Information Cutoff Gate (OD-6) Unresolved:** Vendor readtime strings uniformly report `'16:00'`, even on unscheduled half-days. However, Cboe SPX options historically traded until 16:15:00 ET, while S&P 500 cash equity closed strictly at 16:00:00 ET. Synthetic forward parity proves internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$. The available data cannot establish synchronization without lookahead risk. Concrete alternative reference price proposals are submitted herein for approval.
-4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition (with 205 missing in 2010–2011 alone). A fixed Complete-Case Filtering policy is formalized herein.
-5. **Session Continuity Fails Annual 1.0% Threshold in 5 Years:** While aggregate 12-year missingness is $0.993\%$, annual missingness exceeds the 1.0% tolerance in five separate calendar years (2011, 2014, 2019, 2020, 2021). Continuity is not a clean annual pass.
+4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition (with 205 missing in 2010–2011 alone). A Complete-Case Filtering policy and a mid-2012 sensitivity benchmark are proposed herein as recommendations awaiting formal approval, not adopted protocol decisions.
+5. **Session Continuity Audit Scope (2010–2021 Audited vs. 2022–2023 Unaudited):** The 14-year monthly file inventory is complete (168 files). The daily session continuity audit is complete for 2010–2021 (3,021 expected sessions, 2,994 observed, 30 missing, 3 unexpected), but annual missingness exceeds the 1.0% tolerance in five separate calendar years (2011, 2014, 2019, 2020, 2021). The 2022–2023 test period daily session continuity remains unaudited to avoid opening or parsing the raw test option bundles.
 6. **Datasets are Candidate Outputs, NOT Permanently Frozen:** Neither the Development nor Validation feature datasets are treated as permanently frozen. They serve as candidate audit deliverables pending formal resolution of the information cutoff and test seal governance.
 
 ---
@@ -125,30 +125,36 @@ verifies that the call and put quotes at strike $K^*$ were captured synchronousl
 > [!IMPORTANT]
 > **Synthetic forward parity proves internal surface consistency only.** If call and put quotes were both captured at 16:14:59 ET, put-call parity holds with extreme precision, but the entire surface embeds 14 minutes and 59 seconds of post-close information relative to the 16:00:00 ET equity close $S_t$. Parity cannot establish temporal synchronization with the cash index.
 
-### 4.4 Concrete Alternative Forecast Origin & Reference Price Proposals (Submitted for Approval)
-Because OptionsDX data lacks tick-level timestamps, cash synchronization cannot be empirically proven. To establish a defensible, airtight research design, the following three precisely defined alternative proposals are submitted for instructor/user decision:
+### 4.4 Alternative Forecast Origin & Reference Price Proposals (Decisions Pending Approval)
+Because OptionsDX data lacks tick-level timestamps, temporal synchronization between the 16:00:00 ET cash equity close $S_t$ and option quote snapshots cannot be empirically proven without look-ahead risk. To establish a defensible, reproducible design, two concrete alternative proposals are submitted for instructor/user decision, while the previously floated "Proposal C" is formally withdrawn:
 
-1. **Proposal A: Lagged Close-to-Close Return ($r_{t+1 \to t+2} = \ln(S_{t+2}/S_{t+1})$) [Recommended for Operational Realism]**
+1. **Proposal A: Lagged Close-to-Close Return ($r_{t+1 \to t+2} = \ln(S_{t+2}/S_{t+1})$) [Proposed Recommendation, Pending Approval]**
    - **Forecast Origin / Information Cutoff:** EOD of day $t$ (all $X_t$, $Q_t$, and causal HMM filtered probability $\pi_t$ formed using information available through 16:15:00 ET on day $t$).
    - **Trade / Evaluation Window:** The forecast density targets the return between the next session's cash close $S_{t+1}$ (16:00:00 ET on day $t+1$) and the subsequent cash close $S_{t+2}$ (16:00:00 ET on day $t+2$).
    - **Target Definition:**
      $$r_{t+1 \to t+2} = \ln\left(\frac{S_{t+2}}{S_{t+1}}\right)$$
-   - **Lookahead Mitigation:** The evaluation return window begins a full 23 hours and 45 minutes *after* the feature cutoff at $t$. Lookahead bias is mathematically impossible.
-   - **Course Protocol Impact:** Aligns with realistic portfolio rebalancing where trades are queued overnight and executed at market close on $t+1$.
+   - **Lookahead Mitigation:** The evaluation return window begins a full 23 hours and 45 minutes *after* the feature cutoff at $t$. Look-ahead bias is mathematically impossible.
+   - **Execution Realism:** Directly mirrors practical institutional execution where daily signals are computed post-market on day $t$, trades are staged overnight, and entered at market close on $t+1$.
 
-2. **Proposal B: Next-Day Intraday Open-to-Close Return ($r_{t+1}^{\text{open} \to \text{close}} = \ln(S_{t+1}^{\text{close}} / S_{t+1}^{\text{open}})$)**
+2. **Proposal B: Next-Day Intraday Open-to-Close Return ($r_{t+1}^{\text{open} \to \text{close}} = \ln(S_{t+1}^{\text{close}} / S_{t+1}^{\text{open}})$) [Proposed Recommendation, Pending Approval]**
    - **Forecast Origin / Information Cutoff:** EOD of day $t$ (16:15:00 ET).
    - **Trade / Evaluation Window:** Initiated at the official NYSE cash open on day $t+1$ ($S_{t+1}^{\text{open}}$ at 09:30:00 ET) and liquidated at the cash close ($S_{t+1}^{\text{close}}$ at 16:00:00 ET).
    - **Target Definition:**
      $$r_{t+1}^{\text{intraday}} = \ln\left(\frac{S_{t+1}^{\text{close}}}{S_{t+1}^{\text{open}}}\right)$$
-   - **Lookahead Mitigation:** The position opens 17 hours and 15 minutes after the feature cutoff, isolating next-day cash trading from overnight news.
+   - **Lookahead Mitigation:** The position opens 17 hours and 15 minutes after the feature cutoff, cleanly isolating next-day cash equity trading from overnight information.
 
-3. **Proposal C: Primary Close-to-Close with Bounded Lookahead Margin ($r_{t+1} = \ln(S_{t+1}/S_t)$)**
-   - **Forecast Origin:** Retain $r_{t+1} = \ln(S_{t+1}/S_t)$ as the primary theoretical target, but formally define the 15-minute price wedge:
-     $$\delta_t = \ln\left(\frac{\text{UNDERLYING\_LAST}_t}{S_t}\right)$$
-   - **Evaluation Hurdle:** The standard deviation of $\delta_t$ is empirically quantified at $\sigma_{\delta} \approx 2.1 \text{ bps}$. Require that any statistical outperformance of challenger model $R1$ over baseline $B4$ (e.g. Diebold-Mariano test or log-score differential $\bar{d}$) be shown to exceed the 15-minute wedge variance $\text{Var}(\delta_t) \approx 4.4 \times 10^{-8}$. If gains disappear under a 2 bps noise perturbation, the outperformance cannot be attributed to genuine predictive skill.
+3. **Formal Withdrawal of Proposal C ("Bounded Lookahead Margin"):**
+   - *Original Premise:* A previous draft proposed retaining $r_{t+1} = \ln(S_{t+1}/S_t)$ and requiring the out-of-sample log-score differential $\bar{d}$ to exceed the empirical variance of the 15-minute price wedge $\text{Var}(\delta_t)$, where $\delta_t = \ln(\text{UNDERLYING\_LAST}_t / S_t)$.
+   - *Technical Flaws & Reason for Withdrawal:*
+     1. **Dimensional Incompatibility:** Out-of-sample mean log-score differential $\bar{d} = \frac{1}{N}\sum (\ln p_{B4} - \ln p_{R1})$ is an informational entropy quantity measured in dimensionless nats per observation. In contrast, the return wedge variance $\text{Var}(\delta_t)$ is measured in units of squared return ($\text{nats}^2$ of price ratio). Comparing a linear informational difference against a squared return dispersion is a dimensional mismatch.
+     2. **Failure to Bound Look-Ahead Bias:** Even if scaled, showing $\bar{d} > c$ cannot prove that predictive outperformance is free of look-ahead bias. If post-close news between 16:00:00 and 16:15:00 ET introduces even a minute directional drift in conditional mean $\mu_{t+1}$, probability mass shifts can generate substantial log-score gains that reflect unhedged forward-looking leakage rather than authentic physical volatility forecasting skill.
+   - *Status:* **Proposal C is formally withdrawn and removed as a viable closure option.**
 
-**Decision Gate Recommendation:** Adopt **Proposal A (Lagged Close-to-Close)** or **Proposal B (Intraday Open-to-Close)** to completely eliminate lookahead risk, pending instructor approval before Stage 7. Model fitting remains **STRICTLY GATED**.
+4. **Preservation of Protocol Target Definition:**
+   - The frozen target definition in the code and candidate datasets remains strictly $r_{t+1} = \ln(S_{t+1}/S_t)$.
+   - Neither Proposal A nor Proposal B has been adopted into the codebase. The target definition will not be changed silently; operational modification is gated pending formal user/instructor approval.
+
+**Decision Gate Recommendation:** Formal approval of either **Proposal A** or **Proposal B** is required to close Blocker BLK-1. Model fitting remains **STRICTLY GATED**.
 
 ---
 
@@ -270,12 +276,16 @@ A session-by-session diagnostic of feature completeness across the 10-year Devel
   - **2012 H2 (Jul–Dec 2012):** Exactly 6 missing sessions out of 125 (**4.80% missing**, with 0 missing in July, August, November, December).
   - Prior to July 2012, 242 sessions were incomplete (**85.51%** of all development missingness). From 2013 through 2019, missingness averaged just **1.99%**.
 
-### 7.2 Evaluation of Policy Options
-1. **Policy Option 1: Complete-Case Filtering on Supervised Origins (RECOMMENDED PRIMARY BASELINE)**
+### 7.2 Evaluation of Proposed Policy Options (Recommendations Awaiting Formal Approval)
+
+> [!NOTE]
+> Neither Policy Option 1 nor Policy Option 2 represents an adopted protocol decision. They are submitted as structured, reproducible recommendations for user/instructor sign-off before Stage 7 model training can be authorized. The candidate datasets currently preserve all rows, flagging feature completeness via `valid_Q_all5` without dropping records.
+
+1. **Policy Option 1: Complete-Case Filtering on Supervised Origins (PROPOSED PRIMARY BASELINE — PENDING APPROVAL)**
    - *Rule:* Retain the full 2010–2019 calendar timeline. When training supervised density models ($B2$, $B4$, $R1$) at refit origin $\tau$, include only past origins $t \le \tau - 1$ where all required features in $Z_t$ are valid (`valid_Q_all5 == True`).
    - *Sample Size:* Yields **2,233 valid training pairs** in Development (loss of 283 rows or 11.25%) and **496 valid evaluation pairs** in Validation (loss of 9 rows or 1.78%).
    - *Strengths:* Involves zero synthetic data imputation or artificial carryforward; strictly reflects authentic market observations.
-2. **Policy Option 2: Truncate Development Sample to Weekly Option Regime (`2012-07-02` Start) [RECOMMENDED ROBUSTNESS BENCHMARK]**
+2. **Policy Option 2: Truncate Development Sample to Weekly Option Regime (`2012-07-02` Start) (PROPOSED ROBUSTNESS BENCHMARK — PENDING APPROVAL)**
    - *Rule:* Start the formal training sample on **2012-07-02**, directly matching Cboe's full weekly option rollout.
    - *Sample Size:* Development span becomes 2012-07-02 to 2019-12-31 (1,888 exchange sessions). Retains **1,847 complete sessions** (only 41 missing sessions across 7.5 years, a missing rate of just **2.17%**).
    - *Strengths:* Provides a highly consistent option surface without multi-week monthly expiration gaps.
@@ -291,8 +301,8 @@ A session-by-session diagnostic of feature completeness across the 10-year Devel
 
 ## 8. Stage 7 Readiness Decision & Gate B Closure Prerequisites
 
-### 8.1 Gate B Determination: **BLOCKED / QUALIFIED**
-Gate B **CANNOT BE CLOSED** and Stage 7 forecasting model fitting is **STRICTLY NOT AUTHORIZED** under the current protocol.
+### 8.1 Gate B Determination: **BLOCKED / QUALIFIED (STAGE 7 MODEL FITTING NOT AUTHORIZED)**
+Gate B **CANNOT BE CLOSED** at this time. The data construction phase is conditionally qualified, but four concrete blockers prevent closing Gate B and authorizing Stage 7.
 
 ### 8.2 Remaining Blockers and Closure Requirements
 
@@ -303,18 +313,23 @@ Gate B **CANNOT BE CLOSED** and Stage 7 forecasting model fitting is **STRICTLY 
 | Blocker Ref | Blocker Description                           | Current Audit Status    | Required Evidence / Action to Close Blocker                |
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
 | BLK-1       | Information Cutoff & Return Reference Timing  | BLOCKED (OD-6)          | Formal instructor/user selection of Proposal A (Lagged     |
-|             | (16:00 cash close vs. 16:15 option trading)   |                         | Close-to-Close) or Proposal B (Open-to-Close).             |
+|             | (16:00 cash close vs. 16:15 option trading)   | (Proposal C Withdrawn)  | Close-to-Close) or Proposal B (Open-to-Close). Target      |
+|             |                                               |                         | remains frozen as r_{t+1} = ln(S_{t+1}/S_t) pending choice.|
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
-| BLK-2       | Test Partition Cash Close Breach in Git       | BLOCKED (Recorded in    | Formal administrative acknowledgment that 2022-01-03/04    |
-|             | History (2022-01-03 & 2022-01-04 in cee01a1)  | Commit cee01a1)         | cash closes remain in Git history, with raw bundles sealed |
+| BLK-2       | Test Partition Cash Close Breach in Git       | BLOCKED (Recorded in    | Formal administrative acknowledgment that 2022-01-03 and   |
+|             | History (2022-01-03 & 2022-01-04 in cee01a1)  | Commit cee01a1)         | 2022-01-04 cash closes remain in Git history. Raw test     |
+|             |                                               |                         | option bundles remain unopened.                            |
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
-| BLK-3       | Early Missing-Feature Policy (2010–2011)      | PENDING APPROVAL        | Formal approval of Complete-Case Filtering (2,233 dev rows)|
-|             | (283 incomplete development rows, 72.4% early)|                         | with mid-2012 sensitivity benchmark.                       |
+| BLK-3       | Early Missing-Feature Policy (2010–2011)      | PENDING APPROVAL        | Formal approval of Complete-Case Filtering recommendation  |
+|             | (283 incomplete development rows, 72.4% early)| (Not Yet Adopted)       | (2,233 dev rows) with mid-2012 sensitivity benchmark.      |
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
-| BLK-4       | Full 14-Year Calendar Continuity Audit        | BLOCKED BY TEST SEAL    | Approval to defer 2022–2023 daily continuity audit to      |
-|             | (2022–2023 test sessions unaudited)           |                         | Gate D to preserve test bundle unparsed status.            |
+| BLK-4       | Full 14-Year Calendar Continuity Audit        | PARTIALLY COMPLETE      | Formal approval to defer 2022–2023 daily continuity audit  |
+|             | (2010–2021 audited; 2022–2023 unaudited)      | (2022-2023 Blocked by   | to Gate D to preserve unparsed test option bundles.        |
+|             |                                               | Test Integrity Seal)    | 2010–2021 audit is complete (3,021 sessions, 0.993% miss).|
 +----------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
-### 8.3 Operational Authority
-* **Model Fitting Prohibited:** Code implementation of models $B0$–$B4$ and $R1$ in `src/models/` may be drafted in skeleton form, but **no training routines, gradient steps, parameter estimation, or walk-forward loops may be executed** until Blockers BLK-1, BLK-2, BLK-3, and BLK-4 are formally closed.
+### 8.3 Operational Authority: Model Fitting Prohibited
+* **Plain Statement on Modeling Authorization:** **Gate B does NOT permit Stage 7 model fitting.**
+* Under the governing protocol, **NO models may be fit, trained, tuned, or estimated** ($B0$ unconditioned Gaussian, $B1$ Student-$t$, $B2$ $Q$-only, $B3$ $X$-only, $B4$ non-regime baseline, $R1$ regime-switching challenger, or the latent HMM) until Blockers BLK-1, BLK-2, BLK-3, and BLK-4 are formally resolved and approved.
+* Implementation work in Stage 7 is strictly restricted to drafting code skeletons and architecture modules without executing training loops or computing gradient steps.

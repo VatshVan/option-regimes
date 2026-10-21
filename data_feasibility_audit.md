@@ -356,7 +356,7 @@ In Stage 6, the authorized Gate B empirical data audit was conducted across the 
 * **Arithmetic Reconciliation:**
   $$\text{Observed SPX Dates (2,994)} = \text{Expected Exchange Sessions (3,021)} - \text{Missing Active Sessions (30)} + \text{Unexpected Stale Records (3)}$$
 * **Non-Uniform Annual Missingness:** While aggregate 12-year missingness is $0.993\% \le 1.0\%$, annual missingness exceeds the 1.0% limit in 5 separate years: 2011 (**2.78%**, 5-day consecutive outage), 2014 (**1.19%**), 2019 (**1.98%**), 2020 (**1.19%**), and 2021 (**2.38%**). Continuity is not a uniform annual pass.
-* **Incomplete 14-Year Audit:** Because the 2022–2023 raw option files remain unopened, a full 14-year session continuity audit cannot be completed.
+* **Audit Scope Distinction (2010–2021 Audited vs. 2022–2023 Unaudited):** The 14-year file inventory (168 monthly bundles) is 100% verified. Daily session continuity across option records has been audited for 2010–2021 (3,021 expected sessions, 2,994 observed, 30 missing, 3 unexpected; 0.993% aggregate missing rate). The 2022–2023 test period daily continuity remains unaudited to avoid opening or parsing the raw test option bundles prior to Gate D.
 
 ### 11.2 Early-Sample Strike Breadth Findings (2010–2012)
 * **Audit Scope:** 745 trading sessions across 36 monthly files.
@@ -378,7 +378,7 @@ In Stage 6, the authorized Gate B empirical data audit was conducted across the 
 * **Partition Target Corrections:** To guarantee strict partition boundary purity, boundary target returns on both `2019-12-31` in Development (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` in Validation (`UNOBSERVED_WITHOUT_TEST_CLOSE`) are set strictly to `NaN`.
 * **Complete 5-Feature Completeness:** $Q_t \in \mathbb{R}^5$ is valid on **2,233 rows (88.75%)** and missing on **283 rows (11.25%)** in Development (due to 2010–2011 monthly gaps and 60d slope gaps); valid on **496 rows (98.22%)** and missing on **9 rows (1.78%)** in Validation.
 * **Dataset Status:** Candidate feature datasets for Development (2,516 rows, SHA-256: `138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e`) and Validation (505 rows, SHA-256: `8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7`) are candidate audit outputs, **not permanently frozen**.
-* **Gate B Status:** **BLOCKED / QUALIFIED**. Work may not proceed to Stage 7 (Forecasting Model Fitting) until the information cutoff and test boundary audit decisions are formally resolved.
+* **Gate B Status:** **BLOCKED / QUALIFIED**. Stage 7 forecasting model fitting is NOT permitted or authorized until the information cutoff, test breach acknowledgment, proposed early missing-feature policy, and test continuity audit deferral decisions are formally resolved.
 
 ---
 *End of Data Feasibility Audit (Updated Stage 6 Version).*
