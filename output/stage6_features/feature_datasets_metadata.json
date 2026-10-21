@@ -2,7 +2,7 @@
   "dataset_name": "SPX Corrected Candidate Feature Datasets (Stage 6 Deliverable)",
   "creation_date": "2026-10-21",
   "dataset_status": "CANDIDATE_AUDIT_OUTPUT (NOT PERMANENTLY FROZEN; PENDING INFORMATION CUTOFF AND TEST AUDIT DECISIONS)",
-  "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56). Although raw 2022-2023 option bundles remained unopened, cash close access breached the test seal. The test partition cannot be claimed intact. In the corrected validation dataset, target_r_next on 2021-12-31 is set to NaN (UNOBSERVED_WITHOUT_TEST_CLOSE) to eliminate test data persistence.",
+  "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56). This test-period close was committed to the repository history in commit cee01a1 and used to compute r_{t+1} on 2021-12-31. While raw 2022-2023 option bundles remained unopened, the test seal was breached and remains recorded in Git history. In the working tree and candidate datasets, the 2022-01-03 close has been purged and both boundary target labels (2019-12-31 in development and 2021-12-31 in validation) have been set strictly to NaN.",
   "rate_fallback_disclosure": "On two federal bank holidays where bond markets were closed but equity markets traded (2010-10-11 Columbus Day and 2016-11-11 Veterans Day), ^IRX discount yields were missing. The pipeline causally carried forward rates from the prior session with explicit rate_source, rate_is_fallback=True, and rate_fallback_note logging. Zero silent constant substitution was performed.",
   "partitions": {
     "development": {
@@ -12,7 +12,7 @@
         "2019-12-31"
       ],
       "row_count": 2516,
-      "sha256": "201679a93c387507d6766283b44036f736e40920088feebbf5afb3dad6a96f11",
+      "sha256": "138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e",
       "q_valid_all5_count": 2233,
       "q_missing_all5_count": 283,
       "q_missing_all5_pct": 11.248012718600954,
@@ -22,7 +22,7 @@
       "term_slope_missing_count": 283,
       "x_valid_all6_count": 2516,
       "rate_fallback_count": 2,
-      "terminal_label_note": "Row 2019-12-31 target_r_next utilizes validation close 2020-01-02 (flagged CROSS_PARTITION_LABEL)"
+      "terminal_label_note": "Row 2019-12-31 target_r_next is strictly NaN (UNOBSERVED_WITHOUT_VALIDATION_CLOSE) to prevent partition boundary leakage"
     },
     "validation": {
       "file": "spx_features_validation_2020_2021.csv",

@@ -4,7 +4,7 @@ correct_feature_datasets.py
 Applies the required corrections to the Stage 6 feature datasets:
 1. Enforces strict boundary isolation:
    - Sets 2021-12-31 target_r_next to NaN in validation dataset to prevent test close leakage.
-   - Flags 2019-12-31 target_r_next as CROSS_PARTITION_LABEL in development dataset.
+   - Sets 2019-12-31 target_r_next to NaN in development dataset to prevent validation close leakage.
    - Truncates spx_daily_closes_2009_2021.csv to strictly <= 2021-12-31.
 2. Exposes rate fallbacks and eliminates silent imputation:
    - On 2010-10-11 and 2016-11-11 (bond market holiday closures), applies causal carryforward
@@ -65,10 +65,12 @@ df_dev.loc[idx_veterans, 'ATM_IV_30d'] = 0.12000270458603271
 if not pd.isna(df_dev.loc[idx_veterans, 'ATM_IV_60d']):
     df_dev.loc[idx_veterans, 'TermSlope_60_30'] = df_dev.loc[idx_veterans, 'ATM_IV_60d'] - df_dev.loc[idx_veterans, 'ATM_IV_30d']
 
-# Target boundary handling on 2019-12-31
+# Target boundary handling on 2019-12-31: strictly eliminate validation-period close
 idx_dev_end = df_dev[df_dev['date'] == '2019-12-31'].index[0]
 df_dev['target_status'] = "IN_PARTITION_VALID"
-df_dev.loc[idx_dev_end, 'target_status'] = "CROSS_PARTITION_LABEL (calculated using validation close 2020-01-02)"
+df_dev.loc[idx_dev_end, 'S_next'] = np.nan
+df_dev.loc[idx_dev_end, 'target_r_next'] = np.nan
+df_dev.loc[idx_dev_end, 'target_status'] = "UNOBSERVED_WITHOUT_VALIDATION_CLOSE (validation close 2020-01-02 omitted to protect partition purity)"
 
 # Feature completeness flags
 has_svix_dev = ~df_dev['SVIX_30d'].isna()
@@ -146,7 +148,7 @@ metadata = {
     "dataset_name": "SPX Corrected Candidate Feature Datasets (Stage 6 Deliverable)",
     "creation_date": "2026-10-21",
     "dataset_status": "CANDIDATE_AUDIT_OUTPUT (NOT PERMANENTLY FROZEN; PENDING INFORMATION CUTOFF AND TEST AUDIT DECISIONS)",
-    "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56). Although raw 2022-2023 option bundles remained unopened, cash close access breached the test seal. The test partition cannot be claimed intact. In the corrected validation dataset, target_r_next on 2021-12-31 is set to NaN (UNOBSERVED_WITHOUT_TEST_CLOSE) to eliminate test data persistence.",
+    "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56). This test-period close was committed to the repository history in commit cee01a1 and used to compute r_{t+1} on 2021-12-31. While raw 2022-2023 option bundles remained unopened, the test seal was breached and remains recorded in Git history. In the working tree and candidate datasets, the 2022-01-03 close has been purged and both boundary target labels (2019-12-31 in development and 2021-12-31 in validation) have been set strictly to NaN.",
     "rate_fallback_disclosure": "On two federal bank holidays where bond markets were closed but equity markets traded (2010-10-11 Columbus Day and 2016-11-11 Veterans Day), ^IRX discount yields were missing. The pipeline causally carried forward rates from the prior session with explicit rate_source, rate_is_fallback=True, and rate_fallback_note logging. Zero silent constant substitution was performed.",
     "partitions": {
         "development": {
@@ -163,7 +165,7 @@ metadata = {
             "term_slope_missing_count": int(df_dev['TermSlope_60_30'].isna().sum()),
             "x_valid_all6_count": int(df_dev['valid_X_all6'].sum()),
             "rate_fallback_count": int(df_dev['rate_is_fallback'].sum()),
-            "terminal_label_note": "Row 2019-12-31 target_r_next utilizes validation close 2020-01-02 (flagged CROSS_PARTITION_LABEL)"
+            "terminal_label_note": "Row 2019-12-31 target_r_next is strictly NaN (UNOBSERVED_WITHOUT_VALIDATION_CLOSE) to prevent partition boundary leakage"
         },
         "validation": {
             "file": os.path.basename(val_path),

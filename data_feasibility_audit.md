@@ -374,10 +374,10 @@ In Stage 6, the authorized Gate B empirical data audit was conducted across the 
 * Rates were causally carried forward from the prior active trading day with explicit logging (`rate_source = 'CAUSAL_PRIOR_SESSION_CARRYFORWARD'`, `rate_is_fallback = True`). Zero silent constant substitution was performed. Moments on 2016-11-11 were recomputed at the exact causal rate ($0.004652$).
 
 ### 11.5 Test Boundary Disclosure, Target Label Corrections & Candidate Datasets
-* **Test Boundary Disclosure:** Downloading `^GSPC` through January 2022 accessed the `2022-01-03` close (`4796.56`). Although raw 2022–2023 option bundles remained unopened, cash close access compromised the claim of an untouched test seal.
-* **Partition Target Corrections:** In the corrected validation dataset, target $r_{t+1}$ on `2021-12-31` is set to `NaN` (`UNOBSERVED_WITHOUT_TEST_CLOSE`). The development terminal row `2019-12-31` is flagged `CROSS_PARTITION_LABEL`.
+* **Test Boundary Disclosure:** Downloading `^GSPC` through January 2022 accessed the `2022-01-03` close (`4796.56`), which was committed in commit `cee01a1` and remains in Git repository history. Although raw 2022–2023 option bundles remained unopened, cash close access breached the test seal. Cached cash closes in the active working tree were truncated to $\le \text{2021-12-31}$.
+* **Partition Target Corrections:** To guarantee strict partition boundary purity, boundary target returns on both `2019-12-31` in Development (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` in Validation (`UNOBSERVED_WITHOUT_TEST_CLOSE`) are set strictly to `NaN`.
 * **Complete 5-Feature Completeness:** $Q_t \in \mathbb{R}^5$ is valid on **2,233 rows (88.75%)** and missing on **283 rows (11.25%)** in Development (due to 2010–2011 monthly gaps and 60d slope gaps); valid on **496 rows (98.22%)** and missing on **9 rows (1.78%)** in Validation.
-* **Dataset Status:** Candidate feature datasets for Development (2,516 rows, SHA-256: `201679a93c387507d6766283b44036f736e40920088feebbf5afb3dad6a96f11`) and Validation (505 rows, SHA-256: `8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7`) are candidate audit outputs, **not permanently frozen**.
+* **Dataset Status:** Candidate feature datasets for Development (2,516 rows, SHA-256: `138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e`) and Validation (505 rows, SHA-256: `8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7`) are candidate audit outputs, **not permanently frozen**.
 * **Gate B Status:** **BLOCKED / QUALIFIED**. Work may not proceed to Stage 7 (Forecasting Model Fitting) until the information cutoff and test boundary audit decisions are formally resolved.
 
 ---

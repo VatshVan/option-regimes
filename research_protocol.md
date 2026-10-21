@@ -465,10 +465,9 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - Converted T-bill discount yield to continuous rate: r = -(365/91)*ln(1-d*91/360). Causal carryforward
     on Columbus Day 2010 and Veterans Day 2016 explicitly logged (zero silent imputation).
   - Candidate feature datasets generated: Development (2,516 rows, 2,233 all-5 valid [88.75%],
-    283 missing [11.25%], SHA-256: 201679a9...) and Validation (505 rows, 496 all-5 valid [98.22%],
+    283 missing [11.25%], SHA-256: 138fa68a...) and Validation (505 rows, 496 all-5 valid [98.22%],
     9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
-  - TEST BOUNDARY DISCLOSURE: ^GSPC close for 2022-01-03 accessed during download; test seal cannot
-    be claimed as intact. Terminal validation label on 2021-12-31 set to NaN to prevent test persistence.
+  - TEST BOUNDARY DISCLOSURE: ^GSPC close for 2022-01-03 accessed during download and committed in commit cee01a1 (retained in Git history). Test seal cannot be claimed as intact. Terminal boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity.
   - BLOCKERS: 14-year calendar audit incomplete; 16:00 vs 16:15 ET cutoff remains unverified.
     Model training remains strictly gated. Cannot claim Gate B passed.
                         |

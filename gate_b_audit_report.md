@@ -11,7 +11,7 @@
 
 ### 1.1 Gate B Determination: **BLOCKED / QUALIFIED (CANNOT BE CLAIMED FULLY PASSED)**
 In accordance with project governance, empirical audit findings, and anti-leakage disciplines:
-1. **Test Partition Boundary Crossing & Disclosure:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was initially downloaded through January 2022, thereby accessing the **2022-01-03 closing price (`4796.56`)** across the test boundary to compute the terminal validation return $r_{t+1}$. Therefore, **the test partition seal cannot be claimed as intact or untouched**. In the corrected datasets, the terminal validation return on `2021-12-31` has been set strictly to `NaN` (`UNOBSERVED_WITHOUT_TEST_CLOSE`), and cached cash closes have been truncated to $\le \text{2021-12-31}$.
+1. **Test Partition Boundary Crossing & Disclosure:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was initially downloaded through January 2022, thereby accessing the **2022-01-03 closing price (`4796.56`)** across the test boundary to compute the terminal validation return $r_{t+1}$. This test-period cash close was committed to the repository history in commit `cee01a1`. Therefore, **the test partition seal was breached and remains permanently recorded in Git history, so it cannot be claimed as intact or untouched**. In the active working tree and corrected datasets, cached cash closes have been truncated to $\le \text{2021-12-31}$, and terminal target returns on both `2019-12-31` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` (`UNOBSERVED_WITHOUT_TEST_CLOSE`) have been set strictly to `NaN` to guarantee partition boundary purity.
 2. **Datasets are Candidate Outputs, NOT Permanently Frozen:** Neither the Development nor Validation feature datasets are treated as permanently frozen. They serve as audit-stage candidate datasets pending resolution of the information cutoff, rate ingestion policy, and test boundary rules.
 3. **Information Cutoff Gate (OD-6) Unresolved:** While vendor readtimes uniformly report `'16:00'`, OptionsDX documentation does not establish whether quotes reflect 16:00:00 ET instantaneous snapshots or 16:15:00 ET closing quotes. Put-call parity guarantees internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$. Operational model training remains **strictly gated**.
 4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition. Furthermore, call-wing liquidity truncates at $1.08–1.12 \times S$, failing the $K_{\max}/S \ge 1.15$ span on $>93\%$ of early sessions.
@@ -155,9 +155,10 @@ $$Q_t = [\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_I
    - To prevent test data persistence, $S_{\text{next}}$ and $r_{t+1}$ on `2021-12-31` are set strictly to `NaN` and flagged `UNOBSERVED_WITHOUT_TEST_CLOSE`.
 2. **Development Terminal Row (`2019-12-31`):**
    - The next exchange session was `2020-01-02`, which resides in the validation partition.
-   - Flagged explicitly as `CROSS_PARTITION_LABEL (calculated using validation close 2020-01-02)`.
-3. **Cash Close Dataset Truncation:**
-   - [`output/stage6_features/spx_daily_closes_2009_2021.csv`](file:///D:/IE612_Project/output/stage6_features/spx_daily_closes_2009_2021.csv) was truncated to remove all 2022 dates, terminating strictly on `2021-12-31` (3,063 closes from 2009-11-02 to 2021-12-31).
+   - To guarantee complete partition boundary purity and eliminate cross-partition target leakage, $S_{\text{next}}$ and $r_{t+1}$ on `2019-12-31` are set strictly to `NaN` and flagged `UNOBSERVED_WITHOUT_VALIDATION_CLOSE (validation close 2020-01-02 omitted to protect partition purity)`.
+3. **Cash Close Dataset Truncation & Git History Retention:**
+   - [`output/stage6_features/spx_daily_closes_2009_2021.csv`](file:///D:/IE612_Project/output/stage6_features/spx_daily_closes_2009_2021.csv) was truncated in the active working tree to remove all 2022 dates, terminating strictly on `2021-12-31` (3,063 closes from 2009-11-02 to 2021-12-31).
+   - However, the initial Stage 6 commit (`cee01a1`) included cash closes through `2022-01-04` and computed validation target $r_{t+1}$ on `2021-12-31`. While purged from the active working tree, that test-period close remains permanently recorded in the Git repository history.
 
 ### 6.3 Candidate Dataset Manifest & Hashes
 
@@ -167,7 +168,7 @@ $$Q_t = [\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_I
 +--------------------------------------------------------------------------------------------------------------------+
 | Partition   | Filename                               | Date Range               | Rows  | Valid Q_t | Valid X_t | SHA-256 Hash                                                     |
 +-------------+----------------------------------------+--------------------------+-------+-----------+-----------+------------------------------------------------------------------+
-| Development | spx_features_development_2010_2019.csv | 2010-01-04 to 2019-12-31 | 2,516 |   2,233   |   2,516   | 201679a93c387507d6766283b44036f736e40920088feebbf5afb3dad6a96f11 |
+| Development | spx_features_development_2010_2019.csv | 2010-01-04 to 2019-12-31 | 2,516 |   2,233   |   2,516   | 138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e |
 | Validation  | spx_features_validation_2020_2021.csv  | 2020-01-02 to 2021-12-31 |   505 |     496   |     505   | 8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7 |
 | Test        | SEALED (2022-2023)                     | 2022-01-01 to 2023-12-31 |   --  |    --     |    --     | UNPARSED / SEALED                                                |
 +--------------------------------------------------------------------------------------------------------------------+
