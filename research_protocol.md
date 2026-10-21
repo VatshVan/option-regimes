@@ -57,8 +57,8 @@ A null result is treated as a fully valid, reportable scientific finding. The pr
 
 ### 2.1 Forecast Origin and Cutoff Time
 * **Observation Frequency:** Daily, End-of-Day (EOD).
-* **Nominal Cutoff Time:** 16:00 Eastern Time (ET) on each official trading date $t$.
-* **Information Set $\mathcal{F}_t$:** Contains all underlying prices, trades, macro series, and option quotes recorded up to the session close at date $t$. Absolutely no information timestamped after date $t$'s market close is permitted in feature construction or model conditioning.
+* **Forecast Origin & Cutoff Status:** Established at the nominal trading close on date $t$. The precise information cutoff is explicitly treated as **UNRESOLVED** due to the structural risk of Cboe option closes at 16:15 ET post-dating the 16:00 ET cash equity close $S_t$. Any operational use of option features in predictive models is **strictly gated** until quote timing is empirically verified in Gate B or a defensible alternative cutoff is formally pre-specified.
+* **Information Set $\mathcal{F}_t$:** Contains all underlying prices, trades, macro series, and option quotes recorded up to the declared session cutoff at date $t$. Absolutely no information timestamped after date $t$'s market close is permitted in feature construction or model conditioning.
 
 ### 2.2 Target Return Definition
 * **Primary Target:** Close-to-close log return of the S&P 500 index:
@@ -82,7 +82,7 @@ A null result is treated as a fully valid, reportable scientific finding. The pr
    * *Frozen Protocol Rule:* **Do not rely directly on reported cash index levels (`UNDERLYING_LAST`) for strike moneyness or pricing parity.** Instead, infer the synchronous synthetic forward price $F_{t,\tau}$ directly from at-the-money (ATM) call and put quote midpoints at each maturity:
      $$F_{t,\tau} = K^* + e^{r \tau} \big(C(K^*, \tau) - P(K^*, \tau)\big)$$
      where $K^*$ is the liquid strike minimizing $|C(K, \tau) - P(K, \tau)|$.
-   * *Crucial Timing Clarification:* Inverting the synthetic forward $F_{t,\tau}$ via at-the-money put-call parity guarantees internal moneyness consistency across strikes within the option snapshot. However, **it does not by itself prove synchronization with the 16:00:00 ET cash equity close ($S_t$) or eliminate potential 15-minute look-ahead risk** if the options snapshot reflects 16:15:00 ET Cboe market closes while the physical return target denominator $S_t$ was frozen at 16:00:00 ET. In Gate A, the empirical difference $|F_{t,\tau} - S_t e^{(r-q)\tau}|$ must be audited against cost-of-carry bounds as a plausibility check, not assumed to resolve timing mismatch.
+   * *Crucial Timing Clarification (Strict Cutoff Gate):* Inverting the synthetic forward $F_{t,\tau}$ via at-the-money put-call parity guarantees internal moneyness consistency across strikes within the option snapshot. However, **it does not by itself prove synchronization with the 16:00:00 ET cash equity close ($S_t$) or eliminate potential 15-minute look-ahead risk** if the options snapshot reflects 16:15:00 ET Cboe market closes while the physical return target denominator $S_t$ was frozen at 16:00:00 ET. Therefore, the forecast cutoff is explicitly classified as **UNRESOLVED**, and any operational use of option features in predictive models is strictly gated until quote timing and synchronization are empirically verified in Gate B or an alternative cutoff is formally approved.
 
 2. **AM Settlement (`SPX`) vs. PM Settlement (`SPXW`) Ambiguity:**
    * *The Problem:* Standard monthly SPX options stop trading on Thursday afternoon and settle against the Friday morning Special Opening Quotation (`SET`), whereas weekly/end-of-month options (`SPXW`) trade until Friday 16:00 ET and settle against the 16:00 ET closing price. Raw OptionsDX files do not contain contract root identifiers (`SPX` vs. `SPXW`).
@@ -349,17 +349,23 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
 ### 6.2 Refit Cadence and Walk-Forward Protocol
 * **Walk-Forward Refit:** Expanding window design. Models are refit periodically on an established cadence.
 * **Cadence Default:** **Monthly (every 21 trading sessions)**.
+* **Supervised Training vs. HMM Information Sets at Refit Origin $\tau$:**
+  > [!IMPORTANT]
+  > At refit origin $\tau$ (close of trading day $\tau$), the next-day target return $r_{\tau + 1} = \ln(S_{\tau + 1} / S_{\tau})$ has **not yet occurred**. Including origin $\tau$ in supervised model training would leak unobserved future return $r_{\tau + 1}$. The training partitions must strictly distinguish supervised label availability from unsupervised emission availability:
+  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau}$):** Restricted strictly to origins whose target label $r_{s+1}$ has already been fully observed by session close $\tau$:
+  >    $$\mathcal{T}_{\text{sup},\tau} \equiv \{s : 1 \le s \le \tau - 1\}$$
+  >    For every origin $s \in \mathcal{T}_{\text{sup},\tau}$, the realized return $r_{s+1}$ was observed on or before session close $\tau$ (since $s \le \tau - 1 \implies s+1 \le \tau$).
+  > 2. **HMM Estimation & Feature Scaler Set ($\mathcal{T}_{\text{HMM},\tau}$):**
+  >    $$\mathcal{T}_{\text{HMM},\tau} \equiv \{s : 1 \le s \le \tau\}$$
+  >    Because emission vector $\mathbf{y}_s = [\widetilde{r}_s, \widetilde{\text{RV}}_{20d,s}]^\top$ and feature inputs $[Q_s, X_s]$ are contemporaneous to date $s$, the realization at $s = \tau$ is fully observed at session close $\tau$ (since $r_{\tau} = \ln(S_{\tau} / S_{\tau - 1})$ is already realized).
 * **Execution Rules per Refit Date $\tau$:**
-  1. Expand training set to include all sessions $s \le \tau$.
-  2. Re-fit feature scalers (medians, IQRs) strictly on the expanded training set $\mathcal{T}_{\tau}$.
-  3. Re-estimate HMM transition and emission parameters on $\mathcal{T}_{\tau}$.
-  4. Re-fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ on scaled $\mathcal{T}_{\tau}$.
-  5. For the subsequent 21 sessions $t \in (\tau, \tau + 21]$:
-     - Apply frozen scalers from date $\tau$ to features $Q_t, X_t$.
-     - Compute causal forward filtered probabilities $\pi_t$ using frozen HMM parameters.
-     - Generate 1-day density forecasts $\widehat{p}_{t+1}(r)$ using frozen predictive models.
-     - Observe realized return $r_{t+1}$ after session $t+1$ close and record out-of-sample log-likelihood.
-  6. Store forecast distributions, loss scores, and computation logs permanently.
+  1. Fit feature scalers (medians, IQRs) strictly on $\mathcal{T}_{\text{HMM},\tau} = \{s \le \tau\}$.
+  2. Estimate HMM transition and emission parameters $\boldsymbol{\theta}_{\text{HMM}}$ strictly on $\mathcal{T}_{\text{HMM},\tau} = \{s \le \tau\}$.
+  3. Re-fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ **strictly on supervised pairs $\{(\mathbf{z}_s, r_{s+1})\}_{s=1}^{\tau - 1}$** ($\mathcal{T}_{\text{sup},\tau}$), with features scaled by statistics frozen at $\tau$.
+  4. For the subsequent 21 sessions $t \in [\tau, \tau + 20]$:
+     - For origin $t = \tau$: scale features $[Q_\tau, X_\tau]$, compute forward-filtered probability $\pi_\tau$, and generate forecast $\widehat{p}_{\tau+1}(r)$. Observe realized return $r_{\tau+1}$ after session $\tau+1$ close and record log-likelihood.
+     - Advance sequentially through $t = \tau + 1, \dots, \tau + 20$: apply frozen scalers from date $\tau$ to features $Q_t, X_t$; compute causal forward filtered probabilities $\pi_t$ using frozen HMM parameters; generate 1-day density forecasts $\widehat{p}_{t+1}(r)$ using frozen predictive models; observe realized return $r_{t+1}$ after session $t+1$ close and record out-of-sample log-likelihood.
+  5. Store forecast distributions, loss scores, and computation logs permanently.
 
 ### 6.3 Missing Sessions and Missing Feature Handling
 * **Trading Day Alignment:** Target $r_{t+1} = \ln(S_{t+1}/S_t)$ is evaluated across consecutive active exchange trading sessions.
@@ -452,6 +458,8 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   [Gate B: Calendar Audit & Feature Construction Gate] -> NEXT STAGE PREREQUISITE
   - Execute full 14-year calendar scan: verify missing trading sessions <= 1.0%.
   - Verify early strike coverage: ensure 2010–2012 chains have >= 30 liquid strikes in 20–50 DTE.
+  - Resolve information cutoff & quote timing: empirically verify 16:00 vs 16:15 ET quote
+    synchronization; gate option feature use in forecasting models until verified.
   - Implement dynamic daily interest rate ingestion (^IRX / FRED).
   - Batch extract Q_t and X_t across training (2010–2019) and validation (2020–2021) partitions.
   - Freeze interim feature matrices; confirm 2022–2023 test partition remains untouched.
@@ -499,6 +507,7 @@ The following operational choices are explicitly labeled as **UNRESOLVED** and m
 | **5. Number of Latent Regimes ($K$)** | Must maintain distinct, economically interpretable state separation without overfitting. | **$K = 2$ (Low Vol / High Vol)** (Test $K=3$ on validation only) | Inspect state occupancy in validation refits. If any state has $<5\%$ dwell time, freeze $K=2$. |
 | **6. Inclusion of Secondary Portfolio Backtest** | Depends on course rubric requirements and remaining time in the 1-month timeline. | **Optional secondary deliverable** | Confirm with course instructor/rubric whether portfolio allocation is required or purely illustrative. |
 | **7. OptionsDX Raw Redistribution Compliance** | OptionsDX terms prohibit public redistribution of raw CSV files. | **Local gitignore of `Data/`** | Ensure `.gitignore` permanently excludes raw files; include only processed features or code in final hand-in. |
+| **8. Information Cutoff & Quote Synchronization** | Cash equity closes at 16:00 ET; SPX options historically traded until 16:15 ET. 15-minute lookahead must be prevented. | **Unresolved Cutoff Gate** | Empirically verify quote timing in Gate B; gate all option feature use in predictive models until synchronization is confirmed or a defensible cutoff is specified. |
 
 ---
 

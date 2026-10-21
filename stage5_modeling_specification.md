@@ -33,11 +33,15 @@ Stage 5 is **strictly a specification and protocol finalization stage**. In comp
 * **One-Day Non-Overlapping Horizon:** The primary forecast horizon is strictly one trading day. Consecutive forecast targets $r_{t+1}$ and $r_{t+2}$ are non-overlapping, eliminating moving-average forecast error structures.
 * **Price Return vs. Total Return:** Options are traded directly on the price index ($S_t$, `^GSPC`), which defines the contract boundary, moneyness, and forward parity levels. Forecast target $r_{t+1}$ is computed on the price index to match contract mechanics.
 
-### 2.2 Information Cutoff & Synchronization
-* **Forecast Origin ($t$):** Established at the close of trading on date $t$ (**16:00 ET**).
-* **Information Set ($\mathcal{I}_t$):** Contains only data observable at or prior to 16:00 ET on date $t$:
+### 2.2 Information Cutoff & Synchronization (Unresolved Cutoff & Gate B Prerequisite)
+* **Forecast Origin ($t$):** Established at the end of the trading session on date $t$.
+* **Information Set ($\mathcal{I}_t$):** Contains only data observable at or prior to the declared cutoff on date $t$:
   $$\mathcal{I}_t = \sigma\big(\{S_s, Q_s, X_s\}_{s=1}^t\big)$$
-* **Quote Timing Limitation (Lookahead Risk Note):** OptionsDX quote timestamps report `16:00` ET. While SPX cash equity trading ceases at 16:00 ET, certain index option contracts historically traded until 16:15 ET. Synthetic forward inversion guarantees internal surface consistency across strikes; however, cross-synchronization with cash close $S_t$ remains subject to documented audit checks during Gate B.
+* **Unresolved Cutoff Status & 16:00 vs. 16:15 ET Lookahead Risk:**
+  - Official S&P 500 cash equity trading ceases strictly at **16:00:00 ET** ($S_t$).
+  - However, Cboe SPX index options historically traded until **16:15:00 ET** (15 minutes after equity market close). Although OptionsDX raw files report a `16:00` quote readtime string, whether these quotes reflect a 16:00:00 ET snapshot, a 16:15:00 ET closing settlement snapshot, or an unrecorded timestamp remains empirically unverified across product vintages.
+  - If option quotes reflect price discovery through 16:15 ET while the cash index close $S_t$ was frozen at 16:00 ET, option-implied features $Q_t$ incorporate 15 minutes of post-close information, inducing lookahead leakage into the target return $r_{t+1} = \ln(S_{t+1}/S_t)$.
+  - **Strict Gate Rule:** The forecast information cutoff is explicitly treated as **UNRESOLVED**. Any operational use of option features ($Q_t$) in predictive models is **strictly gated** until quote timing and cash synchronization are empirically verified in Gate B, or a defensible alternative cutoff (e.g., synchronizing via 16:15 ET index futures/level or advancing the forecast origin) is formally specified and approved.
 
 ### 2.3 Handling Missing Sessions and Feature Gaps
 To prevent lookahead leakage and preserve causal evaluation integrity:
@@ -223,16 +227,23 @@ The sample spans 14 calendar years (2010–2023, 168 monthly files) partitioned 
 
 ### 6.2 Expanding-Window Walk-Forward Protocol
 * **Refit Cadence:** Monthly, executed **every 21 active trading sessions**.
-* **At Each Refit Date $\tau_m$:**
-  1. Define training set $\mathcal{T}_{\tau_m} = \{t \le \tau_m\}$.
-  2. Estimate feature scaling statistics (medians, IQRs) on $\mathcal{T}_{\tau_m}$.
-  3. Estimate HMM parameters $\boldsymbol{\theta}_{\text{HMM}}$ on $\mathcal{T}_{\tau_m}$.
-  4. Fit predictive density models $B0, B1, B2, B3, B4, R1$ on scaled $\mathcal{T}_{\tau_m}$.
-  5. For subsequent sessions $t \in (\tau_m, \tau_m + 21]$:
-     - Scale features $Q_t, X_t$ using statistics frozen at $\tau_m$.
-     - Compute forward filtered probability $\pi_t$ using HMM parameters frozen at $\tau_m$.
-     - Generate one-step-ahead density forecast $\widehat{p}_{t+1}(r)$ using models frozen at $\tau_m$.
-     - Observe realized return $r_{t+1}$ after session $t+1$ close and record out-of-sample log-likelihood.
+* **Supervised Training vs. HMM Information Sets at Refit Origin $\tau_m$:**
+  > [!IMPORTANT]
+  > At refit origin $\tau_m$ (close of trading day $\tau_m$), the next-day target return $r_{\tau_m + 1} = \ln(S_{\tau_m + 1} / S_{\tau_m})$ has **not yet occurred**. Including origin $\tau_m$ in supervised model training would leak unobserved future return $r_{\tau_m + 1}$. The training partitions must strictly distinguish supervised label availability from unsupervised emission availability:
+  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau_m}$):** Restricted strictly to origins whose target label $r_{t+1}$ has already been fully observed by session close $\tau_m$:
+  >    $$\mathcal{T}_{\text{sup},\tau_m} \equiv \{t : 1 \le t \le \tau_m - 1\}$$
+  >    For every origin $t \in \mathcal{T}_{\text{sup},\tau_m}$, the realized return $r_{t+1}$ was observed on or before session close $\tau_m$ (since $t \le \tau_m - 1 \implies t+1 \le \tau_m$).
+  > 2. **HMM Estimation & Feature Scaler Set ($\mathcal{T}_{\text{HMM},\tau_m}$):**
+  >    $$\mathcal{T}_{\text{HMM},\tau_m} \equiv \{t : 1 \le t \le \tau_m\}$$
+  >    Because emission vector $\mathbf{y}_t = [\widetilde{r}_t, \widetilde{\text{RV}}_{20d,t}]^\top$ and feature inputs $[Q_t, X_t]$ are contemporaneous to date $t$, the realization at $t = \tau_m$ is fully observed at session close $\tau_m$ (since $r_{\tau_m} = \ln(S_{\tau_m} / S_{\tau_m - 1})$ is already realized).
+* **Execution Sequence at Refit Date $\tau_m$:**
+  1. Fit feature scaling statistics (medians, IQRs) strictly on $\mathcal{T}_{\text{HMM},\tau_m} = \{t \le \tau_m\}$.
+  2. Estimate HMM transition and emission parameters $\boldsymbol{\theta}_{\text{HMM}}$ strictly on $\mathcal{T}_{\text{HMM},\tau_m} = \{t \le \tau_m\}$.
+  3. Fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ **strictly on supervised pairs $\{(\mathbf{z}_t, r_{t+1})\}_{t=1}^{\tau_m - 1}$** ($\mathcal{T}_{\text{sup},\tau_m}$), with features scaled by statistics frozen at $\tau_m$.
+  4. **Out-of-Sample Forecasting for Block $t \in [\tau_m, \tau_m + 20]$ (21 Trading Days):**
+     - For origin $t = \tau_m$: scale features $[Q_{\tau_m}, X_{\tau_m}]$, compute causal forward-filtered probability $\pi_{\tau_m}$, and generate one-step predictive density $\widehat{p}_{\tau_m + 1}(r)$. Observe realized return $r_{\tau_m + 1}$ after session $\tau_m + 1$ close and record out-of-sample log-likelihood.
+     - Advance sequentially to $t = \tau_m + 1, \dots, \tau_m + 20$: compute causal forward filter $\pi_t$ using frozen HMM parameters $\boldsymbol{\theta}_{\text{HMM}}$, scale features using frozen scalers from $\tau_m$, generate 1-day forecast $\widehat{p}_{t+1}(r)$ using frozen predictive models, observe $r_{t+1}$ after session $t+1$ close, and record log-likelihood.
+     - At $t = \tau_m + 21$, advance to the next refit origin $\tau_{m+1}$ and repeat the sequence.
 
 ---
 
@@ -289,6 +300,7 @@ The following operational choices are explicitly documented as **OPEN DECISIONS*
 | **OD-3** | **Regime Count ($K$)** | $K=2$ vs. $K=3$ | Default to $K=2$ (Calm/Stress) unless $K=3$ passes $>5\%$ occupancy on validation and lowers NLL by $>0.02$. | **Provisional Default Fixed** ($K=2$ default). |
 | **OD-4** | **Consecutive Missing Data Rule** | Drop date vs. causal carry-forward | Forward-fill $Q_t = Q_{t-1}$ for $\le 1$ day; drop date from scoring for $>1$ day gap. | **Recommended Default** (Requires confirmation during full calendar audit). |
 | **OD-5** | **Portfolio Translation Inclusion** | Inclusion of cash/index volatility-targeted backtest | Strictly optional secondary deliverable. Cannot rescue a failed density hypothesis. | **Provisional Default Fixed** (Confirmed as secondary/optional). |
+| **OD-6** | **Information Cutoff & Quote Synchronization** | 16:00 vs. 16:15 ET lookahead risk; cash close $S_t$ frozen at 16:00 while options traded until 16:15 ET. | **Unresolved Cutoff Gate:** Empirically verify quote timing in Gate B; gate all option feature use in predictive models until synchronization is confirmed or a defensible cutoff is specified. | **Open & Gated** (Quote timing remains unverified across product vintages). |
 
 ---
 
@@ -309,16 +321,18 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
   [Gate B: Calendar Audit & Feature Construction Gate] -> NEXT STAGE PREREQUISITE
   - Execute full 14-year calendar scan: verify missing trading sessions <= 1.0%.
   - Verify early strike coverage: ensure 2010–2012 chains have >= 30 liquid strikes in 20–50 DTE.
+  - Resolve information cutoff & quote timing: empirically verify 16:00 vs 16:15 ET quote
+    synchronization; gate option feature use in forecasting models until verified.
   - Implement dynamic daily interest rate ingestion (`^IRX` / FRED).
   - Batch extract Q_t and X_t across training (2010–2019) and validation (2020–2021) partitions.
   - Freeze interim feature matrices; confirm 2022–2023 test partition remains untouched.
                         |
                         v
   [Gate C: Baseline & Density Stability Gate] -> MODELING PREREQUISITE
-  - Fit models B0–B4 on development split (2010–2019).
+  - Fit models B0–B4 on supervised development pairs {t <= tau - 1} (2010–2019).
   - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
     scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
-  - Verify HMM regime persistence: dwell time >= 5 days, occupancy >= 5% in each state.
+  - Verify HMM regime persistence on emissions {t <= tau}: dwell time >= 5 days, occupancy >= 5%.
                         |
                         v
   [Gate D: Final Test Evaluation & Integrity Gate] -> EVALUATION PREREQUISITE
