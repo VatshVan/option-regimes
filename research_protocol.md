@@ -31,14 +31,14 @@ $$\mathcal{L}(M) = -\frac{1}{|\mathcal{T}_{\text{test}}|} \sum_{t \in \mathcal{T
 Lower loss represents superior predictive density performance.
 
 ### 1.3 Hypotheses
-* **H1 (Primary — Distributional Gain):** The regime-augmented model ($R1$) achieves a strictly lower mean out-of-sample NLL than the primary non-regime comparator ($B4$) on the untouched test period ($\Delta \mathcal{L} = \mathcal{L}(B4) - \mathcal{L}(R1) > 0$), with statistical significance established via a paired test.
+* **H1 (Primary — Distributional Gain):** The regime-augmented model ($R1$) achieves a strictly lower mean out-of-sample NLL than the primary non-regime comparator ($B4$) on the held-out 2022–2023 test period (whose raw option bundles remain unopened, acknowledging the 2022-01-03/04 cash close breach retained in commit cee01a1 Git history) ($\Delta \mathcal{L} = \mathcal{L}(B4) - \mathcal{L}(R1) > 0$), with statistical significance established via a paired test.
 * **H2 (Incrementality / Non-Redundancy):** The predictive gain of $R1$ over $B4$ is not merely a proxy for current observable volatility or trend. The improvement persists after controlling directly for observable volatility state variables in the baseline.
 * **H3 (Calibration & Tail Fidelity):** Predictive densities from $R1$ maintain acceptable calibration: Probability Integral Transform (PIT) values are approximately uniform, empirical coverage of 50%, 80%, and 95% central predictive intervals does not violate theoretical nominal rates by more than pre-specified tolerances, and tail-loss metrics are preserved.
 * **H4 (Secondary — Economic Relevance):** When predictive densities are fed into a pre-specified, transparent single-index volatility-targeting rule, $R1$ achieves superior net Sharpe ratio or lower maximum drawdown relative to simple benchmarks after transaction costs (5 bps). *(This is strictly secondary and illustrative; it cannot override a failure on H1 or H3.)*
 
 ### 1.4 Decision Rules: What Counts as Evidence
 1. **Evidence For Incremental Regime Value:**
-   * $\Delta \mathcal{L} > 0$ on the untouched test period, with a one-sided paired Diebold–Mariano test rejecting the null of equal predictive accuracy at $p < 0.05$.
+   * $\Delta \mathcal{L} > 0$ on the held-out test period (raw option bundles unopened; test cash close breach recorded in commit cee01a1), with a one-sided paired Diebold–Mariano test rejecting the null of equal predictive accuracy at $p < 0.05$.
    * Stationary block bootstrap 95% confidence intervals for $\Delta \mathcal{L}$ exclude zero.
    * Model passes PIT uniformity diagnostics without exhibiting overconfidence (variance of PIT not collapsing).
    * Control ablations (shuffled regime probabilities, static volatility thresholding) underperform $R1$.
@@ -326,7 +326,7 @@ To isolate the incremental value of latent regimes without confounding from arbi
 ```
 Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
 +----------------------------------------------------+------------------+-------------------+
-|               Training Window (~71.4%)             | Validation (~14%)| Untouched Test(~14%)|
+|               Training Window (~71.4%)             | Validation (~14%)| Held-Out Test (~14%)|
 |                    2010 - 2019                     |   2020 - 2021    |    2022 - 2023    |
 |                (10 full calendar years)            | (2 calendar yrs) | (2 calendar yrs)  |
 +----------------------------------------------------+------------------+-------------------+
@@ -464,11 +464,9 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - Quote timestamps audited: uniform '16:00' vendor string, zero '13:00' early close stamps.
   - Converted T-bill discount yield to continuous rate: r = -(365/91)*ln(1-d*91/360). Causal carryforward
     on Columbus Day 2010 and Veterans Day 2016 explicitly logged (zero silent imputation).
-  - Candidate feature datasets generated: Development (2,516 rows, 2,233 all-5 valid [88.75%],
-    283 missing [11.25%], SHA-256: 138fa68a...) and Validation (505 rows, 496 all-5 valid [98.22%],
-    9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
+  - Candidate feature datasets generated: Development (2,516 sessions, 2,233 feature-complete rows yielding 2,232 usable supervised training pairs [283 missing/incomplete, terminal row 2019-12-31 target nulled], SHA-256: 138fa68a...) and Validation (505 sessions, 496 feature-complete rows yielding 495 usable validation scoring rows [9 missing/incomplete, terminal row 2021-12-31 target nulled], SHA-256: 8bedc8b4...). NOT permanently frozen.
   - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history). The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity. Raw 2022–2023 option bundles remain unopened.
-  - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles (deferral to Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending approval; Proposal C withdrawn); complete-case filtering policy pending approval. Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
+  - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles (deferral to Gate C / Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending approval; Proposal C withdrawn); complete-case filtering policy pending approval. Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
 
                         |
                         v
@@ -481,7 +479,7 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
                         |
                         v
   [Gate D: Final Evaluation & Novelty Integrity Gate] -> EVALUATION PREREQUISITE
-  - Score untouched test set ONCE.
+  - Score held-out 2022–2023 test set ONCE (raw option bundles unopened; test cash close breach recorded in commit cee01a1).
   - Execute paired Diebold-Mariano test and stationary block bootstrap.
   - Report findings honestly (positive or null); freeze final write-up.
 +-----------------------------------------------------------------------------------+

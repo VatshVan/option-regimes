@@ -14,7 +14,7 @@ In accordance with project governance, empirical audit findings, anti-leakage di
 1. **Stage 7 Model Fitting is NOT Authorized:** Under the governing protocol, no forecasting models ($B0$–$B4$, $R1$) or latent Hidden Markov Models (HMM) may be trained, tuned, or fitted until all Gate B blockers are resolved and approved.
 2. **Test Partition Cash Close Breach & Permanent Git Retention:** While the 24 raw OptionsDX monthly bundles for 2022–2023 remained unopened and unparsed, the cash index close dataset (`^GSPC`) was downloaded through January 2022 in Stage 6, thereby accessing both the **2022-01-03 closing price (`4796.56`)** and the **2022-01-04 closing price (`4793.54`)**, and deriving the terminal validation return $r_{t+1}$ on `2021-12-31` (`0.0063538`). All three test-period values were committed in commit `cee01a1` and remain permanently recorded in the Git repository history. Therefore, **the test partition cannot be described as sealed or untouched**. In the active working tree and candidate datasets, cached cash closes have been truncated to $\le \text{2021-12-31}$, and terminal target returns on both `2019-12-31` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`) and `2021-12-31` (`UNOBSERVED_WITHOUT_TEST_CLOSE`) have been set strictly to `NaN` to guarantee partition boundary purity.
 3. **Information Cutoff Gate (OD-6) Unresolved:** Vendor readtime strings uniformly report `'16:00'`, even on unscheduled half-days. However, Cboe SPX options historically traded until 16:15:00 ET, while S&P 500 cash equity closed strictly at 16:00:00 ET. Synthetic forward parity proves internal surface consistency, but does not prove synchronization with the 16:00:00 ET cash equity close $S_t$. The available data cannot establish synchronization without lookahead risk. Concrete alternative reference price proposals are submitted herein for approval.
-4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are missing on **283 sessions (11.25%)** in the Development partition (with 205 missing in 2010–2011 alone). A Complete-Case Filtering policy and a mid-2012 sensitivity benchmark are proposed herein as recommendations awaiting formal approval, not adopted protocol decisions.
+4. **Early-Sample Structural Deficit (2010–2012):** Due to standard monthly expiration cycles prior to mid-2012, 30-day constant-maturity bracketing fails on **76.4% of sessions in 2010** and **68.6% of sessions in 2011**. Complete 5-feature option vectors ($Q_t \in \mathbb{R}^5$) are present on **2,233 sessions** and missing on **283 sessions (11.25%)** in the Development partition (with 205 missing in 2010–2011 alone). Accounting for the terminal boundary row on `2019-12-31` where target $r_{t+1}$ is strictly `NaN` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`), this yields **2,232 usable supervised training pairs** $(Z_t, r_{t+1})$ with all 5 option features (or **2,515 pairs** for historical-state models $X_t \in \mathbb{R}^6$). In Validation, 496 rows are feature-complete, yielding **495 usable validation scoring rows** with observed targets (accounting for terminal row `2021-12-31` with target `NaN` across the test boundary). A Complete-Case Filtering policy and a mid-2012 sensitivity benchmark (yielding 1,846 feature-complete rows and 1,845 supervised pairs) are proposed herein as recommendations awaiting formal approval, not adopted protocol decisions.
 5. **Session Continuity Audit Scope (2010–2021 Audited vs. 2022–2023 Unaudited):** The 14-year monthly file inventory is complete (168 files). The daily session continuity audit is complete for 2010–2021 (3,021 expected sessions, 2,994 observed, 30 missing, 3 unexpected), but annual missingness exceeds the 1.0% tolerance in five separate calendar years (2011, 2014, 2019, 2020, 2021). The 2022–2023 test period daily session continuity remains unaudited to avoid opening or parsing the raw test option bundles.
 6. **Datasets are Candidate Outputs, NOT Permanently Frozen:** Neither the Development nor Validation feature datasets are treated as permanently frozen. They serve as candidate audit deliverables pending formal resolution of the information cutoff and test seal governance.
 
@@ -187,16 +187,20 @@ Full option feature vector completeness requires all five elements:
 $$Q_t = [\text{SVIX}_{30d}, \text{QSkew}_{30d}, \text{QKurt}_{30d}, \text{ATM\_IV}_{30d}, \text{TermSlope}_{60\_30}]^\top \in \mathbb{R}^5$$
 
 * **Development Partition (2010–2019, 2,516 sessions):**
-  - **All 5 Features Complete (`valid_Q_all5`):** **2,233 sessions (88.75%)**.
+  - **Feature-Complete Rows (`valid_Q_all5 == True`):** **2,233 sessions (88.75%)**.
   - **Missing at Least One Feature:** **283 sessions (11.25%)**.
   - **Breakdown of Missingness:**
     - 231 sessions lack 30-day moments (`SVIX_30d`, `QSkew_30d`, `QKurt_30d`, `ATM_IV_30d`), driven by monthly expiration gaps in 2010–2011 (201 days) and missing vendor dates (30 days).
     - An additional 52 sessions have valid 30-day moments but lack 60-day constant maturity options, making `TermSlope_60_30` missing.
   - **Historical State Features ($X_t \in \mathbb{R}^6$):** 2,516 sessions complete (**100.0%**).
+  - **Terminal Boundary Target Omission (`2019-12-31`):** Row `2019-12-31` is feature-complete (`valid_Q_all5 == True`), but its target $r_{t+1}$ is unobserved across the partition boundary and set strictly to `NaN` (`UNOBSERVED_WITHOUT_VALIDATION_CLOSE`).
+  - **Usable Supervised Training Pairs ($Z_t, r_{t+1}$):** **2,232 pairs** with all 5 option features (or **2,515 pairs** for models conditioned only on historical state $X_t \in \mathbb{R}^6$).
 * **Validation Partition (2020–2021, 505 sessions):**
-  - **All 5 Features Complete (`valid_Q_all5`):** **496 sessions (98.22%)**.
+  - **Feature-Complete Rows (`valid_Q_all5 == True`):** **496 sessions (98.22%)**.
   - **Missing Features:** Exactly 9 sessions (1.78%), corresponding directly to the 9 missing option dates in the vendor archive.
   - **Historical State Features ($X_t \in \mathbb{R}^6$):** 505 sessions complete (**100.0%**).
+  - **Terminal Boundary Target Omission (`2021-12-31`):** Row `2021-12-31` is feature-complete (`valid_Q_all5 == True`), but its target $r_{t+1}$ is unobserved across the test boundary and set strictly to `NaN` (`UNOBSERVED_WITHOUT_TEST_CLOSE`).
+  - **Usable Validation Scoring Rows ($Z_t, r_{t+1}$):** **495 rows** with all 5 option features and observed target return (or **504 rows** for models conditioned only on historical state $X_t \in \mathbb{R}^6$).
 
 ### 6.2 Strict Partition Boundary Enforcement on Target Return ($r_{t+1}$)
 1. **Validation Terminal Row (`2021-12-31`):**
@@ -231,15 +235,16 @@ An exhaustive forensic audit of the repository's Git history and current working
 ### 6.4 Candidate Dataset Manifest & Hashes
 
 ```
-+--------------------------------------------------------------------------------------------------------------------+
-|                                Corrected Candidate Feature Datasets (Stage 6 Deliverable)                          |
-+--------------------------------------------------------------------------------------------------------------------+
-| Partition   | Filename                               | Date Range               | Rows  | Valid Q_t | Valid X_t | SHA-256 Hash                                                     |
-+-------------+----------------------------------------+--------------------------+-------+-----------+-----------+------------------------------------------------------------------+
-| Development | spx_features_development_2010_2019.csv | 2010-01-04 to 2019-12-31 | 2,516 |   2,233   |   2,516   | 138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e |
-| Validation  | spx_features_validation_2020_2021.csv  | 2020-01-02 to 2021-12-31 |   505 |     496   |     505   | 8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7 |
-| Test        | COMPROMISED (Raw Bundles Unopened)     | 2022-01-01 to 2023-12-31 |   --  |    --     |    --     | Cash Closes Breached in Git History; Options Unopened            |
-+--------------------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                Corrected Candidate Feature Datasets (Stage 6 Deliverable)                                                                |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Partition   | Filename                               | Date Range               | Sessions | Feature-Complete Q_t | Supervised Pairs / Scoring | SHA-256 Hash        |
++-------------+----------------------------------------+--------------------------+----------+----------------------+----------------------------+---------------------+
+| Development | spx_features_development_2010_2019.csv | 2010-01-04 to 2019-12-31 | 2,516    |   2,233 (88.75%)     | 2,232 pairs (target valid) | 138fa68af7f8f21d... |
+| Validation  | spx_features_validation_2020_2021.csv  | 2020-01-02 to 2021-12-31 |   505    |     496 (98.22%)     |   495 rows (target valid)  | 8bedc8b4e3ae3cf4... |
+| Test        | COMPROMISED (Raw Bundles Unopened)     | 2022-01-01 to 2023-12-31 |   --     |    --                |    --                      | Closes in cee01a1   |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+*Note: Full SHA-256 hashes are: Development: `138fa68af7f8f21da257f5d41332e583e73f32e358c6b2242a5d783dd5b2978e`, Validation: `8bedc8b4e3ae3cf42a99c8ab8477950ab69244eb8e052c7afacef8ac9e7c19d7`.*
 ```
 
 ---
@@ -283,11 +288,11 @@ A session-by-session diagnostic of feature completeness across the 10-year Devel
 
 1. **Policy Option 1: Complete-Case Filtering on Supervised Origins (PROPOSED PRIMARY BASELINE — PENDING APPROVAL)**
    - *Rule:* Retain the full 2010–2019 calendar timeline. When training supervised density models ($B2$, $B4$, $R1$) at refit origin $\tau$, include only past origins $t \le \tau - 1$ where all required features in $Z_t$ are valid (`valid_Q_all5 == True`).
-   - *Sample Size:* Yields **2,233 valid training pairs** in Development (loss of 283 rows or 11.25%) and **496 valid evaluation pairs** in Validation (loss of 9 rows or 1.78%).
+   - *Sample Size:* Yields **2,233 feature-complete rows**, resulting in **2,232 usable supervised training pairs** $(Z_t, r_{t+1})$ in Development (after omitting terminal row `2019-12-31` whose target is nulled to prevent validation leakage, plus 283 incomplete feature rows or 11.25%) and **496 feature-complete rows**, resulting in **495 usable validation scoring rows** in Validation (after omitting terminal row `2021-12-31` whose target is nulled to prevent test leakage, plus 9 missing option sessions or 1.78%).
    - *Strengths:* Involves zero synthetic data imputation or artificial carryforward; strictly reflects authentic market observations.
 2. **Policy Option 2: Truncate Development Sample to Weekly Option Regime (`2012-07-02` Start) (PROPOSED ROBUSTNESS BENCHMARK — PENDING APPROVAL)**
    - *Rule:* Start the formal training sample on **2012-07-02**, directly matching Cboe's full weekly option rollout.
-   - *Sample Size:* Development span becomes 2012-07-02 to 2019-12-31 (1,888 exchange sessions). Retains **1,847 complete sessions** (only 41 missing sessions across 7.5 years, a missing rate of just **2.17%**).
+   - *Sample Size:* Development span becomes 2012-07-02 to 2019-12-31 (1,887 exchange sessions). Retains **1,846 feature-complete sessions** (only 41 missing sessions across 7.5 years, a missing rate of just **2.17%**), yielding **1,845 usable supervised training pairs** (accounting for the terminal `2019-12-31` null target).
    - *Strengths:* Provides a highly consistent option surface without multi-week monthly expiration gaps.
 3. **Policy Option 3: Multi-Day Forward-Fill Imputation [REJECTED]**
    - *Rule:* Carrying forward $Q_{t}$ across 14-to-21-day gaps in 2010–2011.
@@ -321,10 +326,11 @@ Gate B **CANNOT BE CLOSED** at this time. The data construction phase is conditi
 |             |                                               |                         | option bundles remain unopened.                            |
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
 | BLK-3       | Early Missing-Feature Policy (2010–2011)      | PENDING APPROVAL        | Formal approval of Complete-Case Filtering recommendation  |
-|             | (283 incomplete development rows, 72.4% early)| (Not Yet Adopted)       | (2,233 dev rows) with mid-2012 sensitivity benchmark.      |
+|             | (283 incomplete development rows, 72.4% early)| (Not Yet Adopted)       | (2,233 feature-complete dev rows yielding 2,232 supervised |
+|             |                                               |                         | training pairs; mid-2012 benchmark: 1,846 rows / 1,845 prs)|
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
 | BLK-4       | Full 14-Year Calendar Continuity Audit        | PARTIALLY COMPLETE      | Formal approval to defer 2022–2023 daily continuity audit  |
-|             | (2010–2021 audited; 2022–2023 unaudited)      | (2022-2023 Blocked by   | to Gate D to preserve unparsed test option bundles.        |
+|             | (2010–2021 audited; 2022–2023 unaudited)      | (2022-2023 Blocked by   | to Gate C / Gate D to preserve unparsed test option bundles|
 |             |                                               | Test Integrity Seal)    | 2010–2021 audit is complete (3,021 sessions, 0.993% miss).|
 +----------------------------------------------------------------------------------------------------------------------------------------------------+
 ```

@@ -217,12 +217,13 @@ The sample spans 14 calendar years (2010–2023, 168 monthly files) partitioned 
 
 ```
 +-------------------------------------------------------------------+--------------------+--------------------+
-|                Training Partition (~71.4% Span)                   | Validation (~14%)  | Untouched Test(~14%)|
+|                Training Partition (~71.4% Span)                   | Validation (~14%)  | Held-Out Test(~14%)|
 |                   2010-01-01 to 2019-12-31                        | 2020-01-01:2021-12 | 2022-01-01:2023-12 |
 |                   10 Full Calendar Years                          |  2 Calendar Years  |  2 Calendar Years  |
 +-------------------------------------------------------------------+--------------------+--------------------+
   - Pipeline debugging & unit tests                                   - Tuning lambda, K   - SCORED ONCE
-  - Initial parameter estimation                                      - MDN vs Student-t   - Sealed and frozen
+  - Initial parameter estimation                                      - MDN vs Student-t   - Raw bundles unopened;
+                                                                                           cash breach in cee01a1
 ```
 
 ### 6.2 Expanding-Window Walk-Forward Protocol
@@ -250,7 +251,7 @@ The sample spans 14 calendar years (2010–2023, 168 monthly files) partitioned 
 ## 7. Statistical Evaluation, Inference & Multiple Testing Protocol
 
 ### 7.1 Primary Metric: Out-of-Sample Negative Log-Likelihood (NLL)
-Evaluated on the untouched test partition $\mathcal{T}_{\text{test}}$ (2022–2023):
+Evaluated on the held-out test partition $\mathcal{T}_{\text{test}}$ (2022–2023; raw option bundles unopened; cash close breach recorded in commit cee01a1):
 $$\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t \in \mathcal{T}_{\text{test}}} \ln \widehat{p}_{t+1}^{(M)}(r_{t+1})$$
 
 ### 7.2 Paired Loss Differential and Diebold-Mariano Test
@@ -327,15 +328,17 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
   - Quote timestamps audited: uniform '16:00' vendor string, zero '13:00' early close stamps.
   - Converted T-bill discount yield to continuous rate: r = -(365/91)*ln(1-d*91/360). Causal carryforward
     on Columbus Day 2010 and Veterans Day 2016 explicitly logged (zero silent imputation).
-  - Candidate feature datasets generated: Development (2,516 rows, 2,233 all-5 valid [88.75%],
-    283 missing [11.25%], SHA-256: 138fa68a...) and Validation (505 rows, 496 all-5 valid [98.22%],
-    9 missing [1.78%], SHA-256: 8bedc8b4...). NOT permanently frozen.
+  - Candidate feature datasets generated: Development (2,516 sessions, 2,233 feature-complete rows
+    yielding 2,232 usable supervised training pairs [283 missing/incomplete, terminal row 2019-12-31 target nulled],
+    SHA-256: 138fa68a...) and Validation (505 sessions, 496 feature-complete rows yielding 495 usable
+    validation scoring rows [9 missing/incomplete, terminal row 2021-12-31 target nulled], SHA-256: 8bedc8b4...).
+    NOT permanently frozen.
   - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download
     and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history).
     The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31
     and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remain unopened.
   - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles
-    (deferral to Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending
+    (deferral to Gate C / Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending
     approval; Proposal C withdrawn); complete-case filtering policy pending approval.
     Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
                         |
@@ -348,19 +351,8 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
                         |
                         v
   [Gate D: Final Test Evaluation & Integrity Gate] -> EVALUATION PREREQUISITE
-  - Score frozen B4 and R1 models on the untouched 2022–2023 test partition EXACTLY ONCE.
-  - Execute paired Diebold-Mariano test and stationary block bootstrap.
-  - Report findings transparently, regardless of whether H1 is supported or refuted.
-+-----------------------------------------------------------------------------------------+
-```
-  - Fit models B0–B4 on supervised development pairs {t <= tau - 1} (2010–2019).
-  - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
-    scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
-  - Verify HMM regime persistence on emissions {t <= tau}: dwell time >= 5 days, occupancy >= 5%.
-                        |
-                        v
-  [Gate D: Final Test Evaluation & Integrity Gate] -> EVALUATION PREREQUISITE
-  - Score frozen B4 and R1 models on the untouched 2022–2023 test partition EXACTLY ONCE.
+  - Score frozen B4 and R1 models on the held-out 2022–2023 test partition EXACTLY ONCE
+    (raw option bundles unopened; test cash close breach recorded in commit cee01a1).
   - Execute paired Diebold-Mariano test and stationary block bootstrap.
   - Report findings transparently, regardless of whether H1 is supported or refuted.
 +-----------------------------------------------------------------------------------------+
