@@ -4,8 +4,8 @@ batch_feature_pipeline.py
 Corrected Stage 6 Batch Feature Extraction Pipeline (2010-2021).
 
 Crucial Corrections:
-1. Discloses that 2022-01-03 cash close was accessed when downloading ^GSPC closes,
-   compromising the claim of an untouched test seal.
+1. Discloses that both 2022-01-03 and 2022-01-04 cash closes, and the derived 2021-12-31 validation target,
+   were accessed and committed in commit cee01a1, compromising the test seal (while raw 2022–2023 option bundles remain unopened).
 2. Enforces strict partition boundaries on forecast targets:
    - 2021-12-31 validation row target_r_next is set to NaN (cannot be observed without 2022 test close).
    - 2019-12-31 development row target_r_next is explicitly flagged as requiring cross-partition 2020 close.
@@ -56,8 +56,8 @@ def run_pipeline():
     print("=== Corrected Batch Feature Extraction Pipeline (2010-2021) ===")
     
     # 1. Cash Index Closes (^GSPC)
-    # DISCLOSURE: Downloading through 2022-01-04 accessed the 2022-01-03 cash close (4796.56).
-    # We restrict official in-sample closes strictly to <= 2021-12-31.
+    # DISCLOSURE: Downloading through 2022-01-04 accessed both the 2022-01-03 (4796.56) and 2022-01-04 (4793.54) cash closes,
+    # committed in commit cee01a1. In-sample closes are restricted strictly to <= 2021-12-31.
     print("Fetching historical S&P 500 cash closes (^GSPC)...")
     gspc = yf.download('^GSPC', start='2009-11-01', end='2022-01-05', progress=False)
     
@@ -357,7 +357,7 @@ def run_pipeline():
         "dataset_name": "SPX Corrected Candidate Feature Datasets (Stage 6 Audit Deliverable)",
         "creation_date": "2026-10-21",
         "status": "CANDIDATE_AUDIT_OUTPUT (NOT PERMANENTLY FROZEN; PENDING INFORMATION CUTOFF AND TEST AUDIT DECISIONS)",
-        "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Download of ^GSPC cash closes through January 2022 accessed the 2022-01-03 closing price (4796.56) across the test boundary. Raw 2022-2023 option bundles remained unopened, but cash close access compromises the claim of an untouched test partition. The terminal validation target r_next on 2021-12-31 has been set to NaN to prevent test data persistence in the feature matrix.",
+        "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed both the 2022-01-03 close (4796.56) and 2022-01-04 close (4793.54). These test-period closes were committed to the repository history in commit cee01a1 and used to compute r_{t+1} (0.0063538) on 2021-12-31. While raw 2022-2023 option bundles remained unopened, the test seal was breached and remains permanently recorded in Git history. In the working tree and candidate datasets, the 2022 cash closes have been purged and both boundary target labels (2019-12-31 in development and 2021-12-31 in validation) have been set strictly to NaN.",
         "rate_fallback_disclosure": "On two federal bank holidays where the US bond market was closed but equity markets traded (2010-10-11 Columbus Day and 2016-11-11 Veterans Day), ^IRX discount yields were missing. The pipeline applied causal carryforward from the prior session with explicit rate_source logging ('CAUSAL_PRIOR_SESSION_CARRYFORWARD') and rate_is_fallback=True. Zero silent constant substitution was performed.",
         "partitions": {
             "development": {
