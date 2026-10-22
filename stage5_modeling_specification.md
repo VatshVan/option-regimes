@@ -26,22 +26,21 @@ Stage 5 is **strictly a specification and protocol finalization stage**. In comp
 
 ## 2. Target Variable, Information Cutoff & Temporal Alignment
 
-### 2.1 Target Return Definition
-* **Return Definition:** The forecast target is the physical close-to-close log return of the S&P 500 index over session $t+1$:
-  $$r_{t+1} \equiv \ln\left(\frac{S_{t+1}}{S_t}\right)$$
-  where $S_t$ is the official closing price level of the S&P 500 cash index on trading day $t$, recorded in **Index points**.
-* **One-Day Non-Overlapping Horizon:** The primary forecast horizon is strictly one trading day. Consecutive forecast targets $r_{t+1}$ and $r_{t+2}$ are non-overlapping, eliminating moving-average forecast error structures.
-* **Price Return vs. Total Return:** Options are traded directly on the price index ($S_t$, `^GSPC`), which defines the contract boundary, moneyness, and forward parity levels. Forecast target $r_{t+1}$ is computed on the price index to match contract mechanics.
+### 2.1 Target Return Definition & Operational Estimand (User-Authorized Proposal A)
+* **Operational Estimand (Proposal A — User Authorized):** To cleanly eliminate potential 16:00 vs. 16:15 ET lookahead leakage between option quote snapshots and cash equity closes, the operational forecast target for Stage 7 is the close-to-close return over the following session:
+  $$y_t \equiv \ln\left(\frac{S_{t+2}}{S_{t+1}}\right)$$
+  Features $[Q_t, X_t, \pi_t]$ observed through the end of session $t$ (e.g., 16:15 ET) forecast the physical return interval starting strictly at the subsequent session close $S_{t+1}$ (16:00 ET on day $t+1$) and ending at session close $S_{t+2}$ (16:00 ET on day $t+2$). Because the entire return interval $[t+1, t+2]$ begins in the future relative to session $t$, zero option lookahead leakage can contaminate the target.
+* **Historical Candidate Target Preserved:** The original candidate target $r_{t+1} \equiv \ln(S_{t+1}/S_t)$ and Stage 6 CSVs are preserved as historical candidate artifacts. The operational target $y_t$ is constructed in separate Stage 7 operational datasets.
+* **Overlapping Structure:** Under Proposal A, consecutive targets $y_t = \ln(S_{t+2}/S_{t+1})$ and $y_{t+1} = \ln(S_{t+3}/S_{t+2})$ share session $t+2$, inducing an MA(1) error structure under the null of efficiency. Evaluation inference appropriately accounts for this serial dependency via Newey-West HAC variance estimation.
 
-### 2.2 Information Cutoff & Synchronization (Unresolved Cutoff & Gate B Prerequisite)
-* **Forecast Origin ($t$):** Established at the end of the trading session on date $t$.
+### 2.2 Information Cutoff & Label Availability Rule
+* **Forecast Origin ($t$):** Established at the end of trading session on date $t$.
 * **Information Set ($\mathcal{I}_t$):** Contains only data observable at or prior to the declared cutoff on date $t$:
   $$\mathcal{I}_t = \sigma\big(\{S_s, Q_s, X_s\}_{s=1}^t\big)$$
-* **Unresolved Cutoff Status & 16:00 vs. 16:15 ET Lookahead Risk:**
-  - Official S&P 500 cash equity trading ceases strictly at **16:00:00 ET** ($S_t$).
-  - However, Cboe SPX index options historically traded until **16:15:00 ET** (15 minutes after equity market close). Although OptionsDX raw files report a `16:00` quote readtime string, whether these quotes reflect a 16:00:00 ET snapshot, a 16:15:00 ET closing settlement snapshot, or an unrecorded timestamp remains empirically unverified across product vintages.
-  - If option quotes reflect price discovery through 16:15 ET while the cash index close $S_t$ was frozen at 16:00 ET, option-implied features $Q_t$ incorporate 15 minutes of post-close information, inducing lookahead leakage into the target return $r_{t+1} = \ln(S_{t+1}/S_t)$.
-  - **Strict Gate Rule:** The forecast information cutoff is explicitly treated as **UNRESOLVED**. Any operational use of option features ($Q_t$) in predictive models is **strictly gated** until quote timing and cash synchronization are empirically verified in Gate B, or a defensible alternative cutoff (e.g., synchronizing via 16:15 ET index futures/level or advancing the forecast origin) is formally specified and approved.
+* **Strict Label Availability Rule for Model Refit:** At any refit date $\tau_m$ (close of trading day $\tau_m$), target $y_t = \ln(S_{t+2}/S_{t+1})$ is observed if and only if $t+2 \le \tau_m$. Therefore, supervised model training at refit date $\tau_m$ is strictly restricted to origins:
+  $$\mathcal{T}_{\text{sup},\tau_m} \equiv \{t : 1 \le t \le \tau_m - 2\}$$
+  Origins $\tau_m - 1$ and $\tau_m$ are excluded from supervised fitting because their target intervals have not concluded. Contemporaneous HMM emissions and feature scaling statistics separately utilize information through $\tau_m$.
+* **Governance Status:** Formally adopted as a **User-Authorized Project Decision** on 22 October 2026. Does not assert separate course-instructor sign-off unless obtained.
 
 ### 2.3 Handling Missing Sessions and Feature Gaps
 To prevent lookahead leakage and preserve causal evaluation integrity:
@@ -228,22 +227,22 @@ The sample spans 14 calendar years (2010–2023, 168 monthly files) partitioned 
 
 ### 6.2 Expanding-Window Walk-Forward Protocol
 * **Refit Cadence:** Monthly, executed **every 21 active trading sessions**.
-* **Supervised Training vs. HMM Information Sets at Refit Origin $\tau_m$:**
+* **Supervised Training vs. HMM Information Sets at Refit Origin $\tau_m$ (Proposal A Alignment):**
   > [!IMPORTANT]
-  > At refit origin $\tau_m$ (close of trading day $\tau_m$), the next-day target return $r_{\tau_m + 1} = \ln(S_{\tau_m + 1} / S_{\tau_m})$ has **not yet occurred**. Including origin $\tau_m$ in supervised model training would leak unobserved future return $r_{\tau_m + 1}$. The training partitions must strictly distinguish supervised label availability from unsupervised emission availability:
-  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau_m}$):** Restricted strictly to origins whose target label $r_{t+1}$ has already been fully observed by session close $\tau_m$:
-  >    $$\mathcal{T}_{\text{sup},\tau_m} \equiv \{t : 1 \le t \le \tau_m - 1\}$$
-  >    For every origin $t \in \mathcal{T}_{\text{sup},\tau_m}$, the realized return $r_{t+1}$ was observed on or before session close $\tau_m$ (since $t \le \tau_m - 1 \implies t+1 \le \tau_m$).
+  > Under user-authorized Proposal A, target return $y_t \equiv \ln(S_{t+2} / S_{t+1})$ requires observing the close of session $t+2$. At refit origin $\tau_m$ (close of trading day $\tau_m$), target $y_{\tau_m}$ requires $S_{\tau_m + 2}$ (2 sessions in the future) and target $y_{\tau_m - 1}$ requires $S_{\tau_m + 1}$ (1 session in the future). Including origins $\tau_m - 1$ or $\tau_m$ in supervised model training would leak unobserved future returns. The training partitions strictly enforce label availability:
+  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau_m}$):** Restricted strictly to origins whose complete target interval $[t+1, t+2]$ has concluded by session close $\tau_m$:
+  >    $$\mathcal{T}_{\text{sup},\tau_m} \equiv \{t : 1 \le t \le \tau_m - 2\}$$
+  >    For every origin $t \in \mathcal{T}_{\text{sup},\tau_m}$, realized return $y_t$ is fully observed on or before session close $\tau_m$ (since $t \le \tau_m - 2 \implies t+2 \le \tau_m$).
   > 2. **HMM Estimation & Feature Scaler Set ($\mathcal{T}_{\text{HMM},\tau_m}$):**
   >    $$\mathcal{T}_{\text{HMM},\tau_m} \equiv \{t : 1 \le t \le \tau_m\}$$
   >    Because emission vector $\mathbf{y}_t = [\widetilde{r}_t, \widetilde{\text{RV}}_{20d,t}]^\top$ and feature inputs $[Q_t, X_t]$ are contemporaneous to date $t$, the realization at $t = \tau_m$ is fully observed at session close $\tau_m$ (since $r_{\tau_m} = \ln(S_{\tau_m} / S_{\tau_m - 1})$ is already realized).
 * **Execution Sequence at Refit Date $\tau_m$:**
   1. Fit feature scaling statistics (medians, IQRs) strictly on $\mathcal{T}_{\text{HMM},\tau_m} = \{t \le \tau_m\}$.
   2. Estimate HMM transition and emission parameters $\boldsymbol{\theta}_{\text{HMM}}$ strictly on $\mathcal{T}_{\text{HMM},\tau_m} = \{t \le \tau_m\}$.
-  3. Fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ **strictly on supervised pairs $\{(\mathbf{z}_t, r_{t+1})\}_{t=1}^{\tau_m - 1}$** ($\mathcal{T}_{\text{sup},\tau_m}$), with features scaled by statistics frozen at $\tau_m$.
+  3. Fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ **strictly on complete-case supervised pairs $\{(\mathbf{z}_t, y_t)\}_{t=1}^{\tau_m - 2}$** ($\mathcal{T}_{\text{sup},\tau_m}$), with features scaled by statistics frozen at $\tau_m$.
   4. **Out-of-Sample Forecasting for Block $t \in [\tau_m, \tau_m + 20]$ (21 Trading Days):**
-     - For origin $t = \tau_m$: scale features $[Q_{\tau_m}, X_{\tau_m}]$, compute causal forward-filtered probability $\pi_{\tau_m}$, and generate one-step predictive density $\widehat{p}_{\tau_m + 1}(r)$. Observe realized return $r_{\tau_m + 1}$ after session $\tau_m + 1$ close and record out-of-sample log-likelihood.
-     - Advance sequentially to $t = \tau_m + 1, \dots, \tau_m + 20$: compute causal forward filter $\pi_t$ using frozen HMM parameters $\boldsymbol{\theta}_{\text{HMM}}$, scale features using frozen scalers from $\tau_m$, generate 1-day forecast $\widehat{p}_{t+1}(r)$ using frozen predictive models, observe $r_{t+1}$ after session $t+1$ close, and record log-likelihood.
+     - For origin $t = \tau_m$: scale features $[Q_{\tau_m}, X_{\tau_m}]$, compute causal forward-filtered probability $\pi_{\tau_m}$, and generate physical predictive density $\widehat{p}_{t+2 \mid t}(y)$ for $y_{\tau_m}$. Observe realized return $y_{\tau_m} = \ln(S_{\tau_m + 2}/S_{\tau_m + 1})$ after session $\tau_m + 2$ closes and record out-of-sample log-likelihood.
+     - Advance sequentially to $t = \tau_m + 1, \dots, \tau_m + 20$: compute causal forward filter $\pi_t$ using frozen HMM parameters $\boldsymbol{\theta}_{\text{HMM}}$, scale features using frozen scalers from $\tau_m$, generate density forecast $\widehat{p}_{t+2 \mid t}(y)$ using frozen predictive models, observe $y_t$ after session $t+2$ closes, and record log-likelihood.
      - At $t = \tau_m + 21$, advance to the next refit origin $\tau_{m+1}$ and repeat the sequence.
 
 ---

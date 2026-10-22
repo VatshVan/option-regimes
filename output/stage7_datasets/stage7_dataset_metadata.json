@@ -1,0 +1,62 @@
+{
+  "dataset_name": "SPX Stage 7 Operational Feature & Target Datasets",
+  "creation_date": "2026-10-22",
+  "governance_status": "USER_AUTHORIZED_PROJECT_DECISIONS (Stage 7 Operational Baseline)",
+  "timing_alignment_protocol": "PROPOSAL_A_LAGGED_CLOSE_TO_CLOSE: Target y_t = ln(S_{t+2} / S_{t+1})",
+  "timing_rationale": "Features at session t close predict the return from session t+1 close to session t+2 close, cleanly eliminating potential 16:00 cash equity vs. 16:15 option quote lookahead leakage.",
+  "test_partition_status": "COMPROMISED_ACCESS_DISCLOSURE: Downloading ^GSPC cash closes through January 2022 accessed both the 2022-01-03 close (4796.56) and 2022-01-04 close (4793.54). These test-period closes were committed to the repository history in commit cee01a1 and used to compute r_{t+1} (0.0063538) on 2021-12-31. While raw 2022-2023 option bundles remained unopened, the test seal was breached and remains permanently recorded in Git history. In the working tree and candidate datasets, the 2022 cash closes have been purged and both boundary target labels (2019-12-31 in development and 2021-12-31 in validation) have been set strictly to NaN.",
+  "known_return_exclusion_rule": "The known Jan 3-to-Jan 4 return (ln(4793.54 / 4796.56) = -0.0006298) is strictly excluded from any eventual test score and disclosed.",
+  "partitions": {
+    "development": {
+      "file": "spx_stage7_operational_development_2010_2019.csv",
+      "date_range": [
+        "2010-01-04",
+        "2019-12-31"
+      ],
+      "row_count": 2516,
+      "sha256": "33e0353d4f7d4e94d7f17cc5ca725ad11df1c996870ca3b52087757a5b0a5411",
+      "feature_complete_q_all5_count": 2233,
+      "feature_missing_q_all5_count": 283,
+      "observed_in_partition_target_count": 2514,
+      "unobserved_boundary_target_count": 2,
+      "usable_supervised_pairs_all5_count": 2231,
+      "usable_supervised_pairs_x_only_count": 2514,
+      "terminal_boundary_rows": [
+        "2019-12-30",
+        "2019-12-31"
+      ],
+      "terminal_boundary_note": "Target y_t is strictly NaN on 2019-12-30 and 2019-12-31 because S_{t+2} resides in the validation partition."
+    },
+    "validation": {
+      "file": "spx_stage7_operational_validation_2020_2021.csv",
+      "date_range": [
+        "2020-01-02",
+        "2021-12-31"
+      ],
+      "row_count": 505,
+      "sha256": "f2f5b84daa22d2c21e0dab4ba001f348ec398143671bc24f987785f21755343c",
+      "feature_complete_q_all5_count": 496,
+      "feature_missing_q_all5_count": 9,
+      "observed_in_partition_target_count": 503,
+      "unobserved_boundary_target_count": 2,
+      "usable_validation_scoring_rows_all5_count": 494,
+      "usable_validation_scoring_rows_x_only_count": 503,
+      "terminal_boundary_rows": [
+        "2021-12-30",
+        "2021-12-31"
+      ],
+      "terminal_boundary_note": "Target y_t is strictly NaN on 2021-12-30 and 2021-12-31 because S_{t+2} resides in the test partition."
+    },
+    "mid_2012_sensitivity_benchmark": {
+      "date_range": [
+        "2012-07-02",
+        "2019-12-31"
+      ],
+      "row_count": 1887,
+      "feature_complete_q_all5_count": 1846,
+      "observed_in_partition_target_count": 1885,
+      "usable_supervised_pairs_all5_count": 1844,
+      "usable_supervised_pairs_x_only_count": 1885
+    }
+  }
+}

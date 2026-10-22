@@ -1,6 +1,6 @@
 # Stage 7 Readiness & Gate B Closure Review: Calendar Continuity, Early Strike Breadth, Quote Timing, Rate Ingestion, and Candidate Feature Datasets
 
-**Document Status:** Formal Gate B Closure Review & Stage 7 Readiness Assessment  
+**Document Status:** Formal Gate B Closure Review & Stage 7 Readiness Assessment (Updated with User-Authorized Stage 7 Decisions)  
 **Date:** 22 October 2026 (Revised & Comprehensive)  
 **Author:** Antigravity (Advanced Agentic Coding Pair Programmer)  
 **Governing Documents:** [research_protocol.md](file:///D:/IE612_Project/research_protocol.md), [stage5_modeling_specification.md](file:///D:/IE612_Project/stage5_modeling_specification.md), [stage4_feature_pipeline.md](file:///D:/IE612_Project/stage4_feature_pipeline.md), [data_feasibility_audit.md](file:///D:/IE612_Project/data_feasibility_audit.md), [implementation.md](file:///D:/IE612_Project/implementation.md)
@@ -336,7 +336,33 @@ Gate B **CANNOT BE CLOSED** at this time. The data construction phase is conditi
 +----------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
-### 8.3 Operational Authority: Model Fitting Prohibited
-* **Plain Statement on Modeling Authorization:** **Gate B does NOT permit Stage 7 model fitting.**
-* Under the governing protocol, **NO models may be fit, trained, tuned, or estimated** ($B0$ unconditioned Gaussian, $B1$ Student-$t$, $B2$ $Q$-only, $B3$ $X$-only, $B4$ non-regime baseline, $R1$ regime-switching challenger, or the latent HMM) until Blockers BLK-1, BLK-2, BLK-3, and BLK-4 are formally resolved and approved.
-* Implementation work in Stage 7 is strictly restricted to drafting code skeletons and architecture modules without executing training loops or computing gradient steps.
+### 8.3 Operational Authority Prior to Authorization
+* **Historical Audit Determination:** Prior to formal decision sign-off, Gate B prohibited model fitting until Blockers BLK-1 through BLK-4 were resolved.
+
+---
+
+## 9. Stage 7 User-Authorized Project Decisions & Modeling Authorization (22 October 2026)
+
+On 22 October 2026, the project user formally authorized the following decisions, establishing the operational protocol for Stage 7 Development and Validation modeling:
+
+1. **Resolution of BLK-1 (Timing & Estimand Shift — Proposal A Adopted):**
+   - Adopted **Proposal A** (Lagged Close-to-Close). Features available at the end of session $t$ predict the physical return over the next session:
+     $$y_t \equiv \ln\left(\frac{S_{t+2}}{S_{t+1}}\right)$$
+   - This delays the evaluation return window until after the uncertain 16:00/16:15 option cutoff, cleanly eliminating look-ahead leakage.
+   - The original candidate target $r_{t+1} = \ln(S_{t+1}/S_t)$ and Stage 6 CSVs are preserved intact as historical artifacts; separate Stage 7 operational datasets are generated with $y_t$.
+2. **Resolution of BLK-2 (Test Partition Cash Close Breach & Exclusion Rule):**
+   - Acknowledged the retention of 2022-01-03 and 2022-01-04 cash closes and the 2021-12-31 validation target in Git history (`cee01a1`).
+   - The test partition is never described as untouched. Raw 2022–2023 option bundles remain unopened.
+   - The known Jan 3-to-Jan 4 return ($\ln(S_{\text{2022-01-04}}/S_{\text{2022-01-03}})$) is strictly excluded from any eventual test score, with this exclusion pre-registered and disclosed.
+3. **Resolution of BLK-3 (Missing Option Feature Policy & Sample Counts):**
+   - Approved **Complete-Case Filtering** on supervised origins with `valid_Q_all5 == True`, alongside the pre-specified **mid-2012 sensitivity benchmark** (`2012-07-02` to `2019-12-31`).
+   - Under Proposal A ($y_t$), target intervals are kept strictly within partitions. The terminal two rows of each partition have null within-partition targets ($S_{t+2}$ crosses the boundary):
+     - **Development (2010–2019):** 2,516 sessions; 2,233 feature-complete rows; **2,231 usable supervised training pairs** $(Z_t, y_t)$ (omitting `2019-12-30` and `2019-12-31` whose target intervals require 2020 validation closes). For $X_t$-only models: **2,514 pairs**.
+     - **Validation (2020–2021):** 505 sessions; 496 feature-complete rows; **494 usable validation scoring rows** $(Z_t, y_t)$ (omitting `2021-12-30` and `2021-12-31` whose target intervals require 2022 test closes). For $X_t$-only models: **503 rows**.
+     - **Mid-2012 Benchmark:** 1,887 sessions; 1,846 feature-complete rows; **1,844 usable supervised training pairs**.
+4. **Resolution of BLK-4 (Continuity Audit Deferral):**
+   - Approved deferral of daily session continuity verification for 2022–2023 to Gate D, before test scoring. Raw option bundles remain unopened in Stage 7.
+5. **Governance Authority Distinction:**
+   - These decisions are recorded as **User-Authorized Project Decisions**. No separate course-instructor approval is claimed unless formally obtained.
+6. **Operational Authority for Stage 7:**
+   - Model fitting of baselines $B0$–$B4$ and challenger $R1$ on Development data, and walk-forward tuning/diagnostics on Validation data, is **AUTHORIZED** under these user-approved decisions. Test partition evaluation remains strictly barred.
