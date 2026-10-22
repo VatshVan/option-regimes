@@ -60,7 +60,7 @@ The 14-year span (168 monthly bundles) supports the calendar-aligned split desig
 ```
                                 SPX Sample Timeline (2010 - 2023)
 +-------------------------------------------------------------+--------------------+--------------------+
-|                Training Window (~71.4%)                     | Validation (~14.3%)| Untouched Test(~14%)|
+|                Training Window (~71.4%)                     | Validation (~14.3%)| Held-Out Test (~14%)|
 |                   2010-01-01 to 2019-12-31                  |2020-01-01to2021-12 |2022-01-01to2023-12 |
 |                     (120 monthly files)                     | (24 monthly files) | (24 monthly files) |
 +-------------------------------------------------------------+--------------------+--------------------+
@@ -78,9 +78,9 @@ The 14-year span (168 monthly bundles) supports the calendar-aligned split desig
 2. **Validation Window (2020–2021, 2 Full Calendar Years, 24 Months, ~14.3% of Span):**
    * Spans extreme crisis dynamics (March 2020 Covid shock: VIX reaching 82.69) and the subsequent high-momentum recovery.
    * Provides an ideal stress-testing environment for hyperparameter tuning ($K=2$ vs. $K=3$ regimes, regularization, neural layer capacity) without touching the test set.
-3. **Untouched Test Window (2022–2023, 2 Full Calendar Years, 24 Months, ~14.3% of Span):**
+3. **Held-Out Test Window (2022–2023, 2 Full Calendar Years, 24 Months, ~14.3% of Span):**
    * Spans the 2022 aggressive Federal Reserve interest-rate hiking cycle / equity bear market, followed by the 2023 disinflationary expansion.
-   * Completely held out until all model architectures and cleaning thresholds are frozen.
+   * Completely held out until all model architectures and cleaning thresholds are frozen. *(Historical Stage 2 Context: At the time of Stage 2 audit, the test partition was designed as untouched. Note: In Stage 6, January 3 and 4, 2022 cash closes were accessed and committed in commit `cee01a1` Git history; raw 2022–2023 option bundles remain unopened).*
 
 *Note on Calendar Partitioning vs. Exact Session Counts:* This partition is aligned with complete calendar years: 2010–2019 (10 years, ~71.4%), 2020–2021 (2 years, ~14.3%), and 2022–2023 (2 years, ~14.3% of the calendar-year span). It avoids cutting across annual macroeconomic boundaries. Exact trading session counts will be computed directly from the full calendar audit without assuming nominal session totals in advance.
 
@@ -222,7 +222,7 @@ To maintain scientific integrity without silently rewriting [`research_protocol.
 
 ### 9.1 What Metadata and Sample Evidence Supports
 1. **Macro Calendar Completeness:** Exactly 168 monthly files exist for SPX, covering every calendar month from January 2010 through December 2023 without a single missing month.
-2. **Sample Depth for ~71.4% / 14.3% / 14.3% Calendar Partition:** The 14 full calendar years provide substantial historical coverage across training (2010–2019, 10 yrs), validation (2020–2021, 2 yrs), and untouched test (2022–2023, 2 yrs) windows, spanning diverse market cycles.
+2. **Sample Depth for ~71.4% / 14.3% / 14.3% Calendar Partition:** The 14 full calendar years provide substantial historical coverage across training (2010–2019, 10 yrs), validation (2020–2021, 2 yrs), and held-out test (2022–2023, 2 yrs; raw option bundles unopened; test cash close breach recorded in commit cee01a1) windows, spanning diverse market cycles.
 3. **Appropriate Wide Schema for European Parity:** Contract-level bid and ask quotes exist on paired call/put rows with underlying levels, enabling synthetic forward extraction and midpoint quadrature.
 4. **Need to Discard Vendor Calculations:** Precomputed IV and Greeks display gaps and opaque modeling, confirming that moments must be computed independently from clean quotes.
 5. **Volume and Spread as Open Interest Proxy:** Missing open interest is confirmed; relative bid-ask spread and non-zero bid constraints are supported as feasible proxies.

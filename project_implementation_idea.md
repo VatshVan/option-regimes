@@ -319,7 +319,7 @@ Do not commit to a particular provider until access, licence, cost, historical d
 - Fit scalers, imputers, PCA, regime models, and feature-selection procedures within each training window.
 - Purge or embargo overlapping target windows when needed.
 - Avoid random train/test splits for time-series forecasting.
-- Keep a final untouched test period for the final specification.
+- Keep a final held-out test period for the final specification (preserving raw test bundles unopened, accounting for any cash close breach in Git history).
 
 ---
 
@@ -331,7 +331,7 @@ Use a chronological design, such as:
 1. Initial training window.
 2. Validation window for hyperparameters and model selection.
 3. Rolling or expanding out-of-sample test windows.
-4. Final untouched period for the frozen model specification.
+4. Final held-out test period for the frozen model specification (raw bundles unopened; cash close breach recorded in commit cee01a1).
 
 Exact dates depend on the dataset. Define them only after inspecting coverage and missingness. If targets overlap across a 21-day horizon, account for overlap in splitting and inference.
 
