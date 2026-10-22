@@ -337,8 +337,8 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
     and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history).
     The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31
     and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remain unopened.
-  - BLOCKERS: 2022–2023 test period daily continuity unaudited to avoid opening raw test bundles
-    (deferral to Gate C / Gate D pending approval); 16:00 vs 16:15 ET cutoff unresolved (Proposals A & B pending
+  - BLOCKERS: 2022–2023 test period daily continuity remains unaudited to avoid opening raw test bundles;
+    proposed deferral to Gate D is pending approval. The test partition was previously breached through cash-close access recorded in Git history. The 16:00 vs 16:15 ET cutoff remains unresolved (Proposals A & B pending
     approval; Proposal C withdrawn); complete-case filtering policy pending approval.
     Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
                         |

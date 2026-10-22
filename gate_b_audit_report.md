@@ -330,8 +330,9 @@ Gate B **CANNOT BE CLOSED** at this time. The data construction phase is conditi
 |             |                                               |                         | training pairs; mid-2012 benchmark: 1,846 rows / 1,845 prs)|
 +-------------+-----------------------------------------------+-------------------------+------------------------------------------------------------+
 | BLK-4       | Full 14-Year Calendar Continuity Audit        | PARTIALLY COMPLETE      | Formal approval to defer 2022–2023 daily continuity audit  |
-|             | (2010–2021 audited; 2022–2023 unaudited)      | (2022-2023 Blocked by   | to Gate C / Gate D to preserve unparsed test option bundles|
-|             |                                               | Test Integrity Seal)    | 2010–2021 audit is complete (3,021 sessions, 0.993% miss).|
+|             | (2010–2021 audited; 2022–2023 unaudited)      | (2022–2023 not audited; | to Gate D, while preserving the unopened raw option bundles|
+|             |                                               | partition already      | 2010–2021 audit is complete (3,021 sessions, 0.993% miss).|
+|             |                                               | breached by cash data) |                                                            |
 +----------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
