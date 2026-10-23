@@ -17,47 +17,38 @@ Metrics:
 import math
 import numpy as np
 from scipy import stats
+import scipy.special as sp
 from scipy.integrate import quad
 
 def compute_nll(log_densities: np.ndarray) -> float:
     """Mean Negative Log-Likelihood (nats per session)."""
     return float(-np.mean(log_densities))
 
-# Pre-compute Gauss-Legendre quadrature nodes and weights for smooth CRPS integration
-_GL_NODES, _GL_WEIGHTS = np.polynomial.legendre.leggauss(30)
-
 def compute_crps_student_t_vectorized(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray) -> np.ndarray:
     """
-    Computes Continuous Ranked Probability Score (CRPS) for Student-t distributions:
+    Computes Continuous Ranked Probability Score (CRPS) for generalized Student-t distributions:
     CRPS(F, y) = int_{-infty}^y F(z)^2 dz + int_y^infty (1 - F(z))^2 dz
-    using split Gauss-Legendre quadrature (30 nodes) with 10^-8 accuracy and vectorised speed.
+    using the exact closed-form analytical expression (Jordan, Krüger, & Lerch, 2019):
+      CRPS(F_{nu, mu, sigma}, y) = sigma * [ z*(2*F(z) - 1) + 2*f(z)*((nu + z^2)/(nu - 1)) - C(nu) ]
+    where:
+      z = (y - mu) / sigma
+      C(nu) = [2 * sqrt(nu) / (nu - 1)] * [B(1/2, nu - 1/2) / B(1/2, nu/2)^2]
+    Valid for nu > 1. Exact over the full real line (-infty, infty) to machine precision (< 1e-14).
     """
     y = np.asarray(y, dtype=np.float64)
     mu = np.asarray(mu, dtype=np.float64)
     sigma = np.asarray(sigma, dtype=np.float64)
     nu = np.asarray(nu, dtype=np.float64)
     
-    # Piece 1: [mu - 12*sigma, y]
-    a = mu - 12.0 * sigma
-    b = y
-    mid1 = 0.5 * (b + a)
-    half1 = 0.5 * (b - a)
-    z1 = mid1[:, None] + half1[:, None] * _GL_NODES[None, :]
-    u1 = (z1 - mu[:, None]) / sigma[:, None]
-    F1 = stats.t.cdf(u1, df=nu[:, None])
-    int1 = half1 * np.sum((F1 ** 2) * _GL_WEIGHTS[None, :], axis=1)
+    z = (y - mu) / sigma
+    F = stats.t.cdf(z, df=nu)
+    f = stats.t.pdf(z, df=nu)
     
-    # Piece 2: [y, mu + 12*sigma]
-    c = y
-    d = mu + 12.0 * sigma
-    mid2 = 0.5 * (d + c)
-    half2 = 0.5 * (d - c)
-    z2 = mid2[:, None] + half2[:, None] * _GL_NODES[None, :]
-    u2 = (z2 - mu[:, None]) / sigma[:, None]
-    F2 = stats.t.cdf(u2, df=nu[:, None])
-    int2 = half2 * np.sum(((1.0 - F2) ** 2) * _GL_WEIGHTS[None, :], axis=1)
+    term1 = z * (2.0 * F - 1.0)
+    term2 = 2.0 * f * (nu + z ** 2) / (nu - 1.0)
+    term3 = (2.0 * np.sqrt(nu) / (nu - 1.0)) * sp.beta(0.5, nu - 0.5) / (sp.beta(0.5, nu / 2.0) ** 2)
     
-    return int1 + int2
+    return sigma * (term1 + term2 - term3)
 
 def student_t_crps(y: float, mu: float, sigma: float, nu: float) -> float:
     """Scalar interface for Student-t CRPS."""

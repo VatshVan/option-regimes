@@ -2,20 +2,29 @@
 
 **Project Title:** Empirical Evaluation of Latent Market Regimes in Physical Return Density Forecasting  
 **Author:** Antigravity (Advanced Agentic Coding Pair Programmer)  
-**Date:** 22 October 2026  
-**Document Status:** Formal Stage 7 Deliverable & Gate C Determination Report  
+**Date:** 24 October 2026  
+**Document Status:** Formal Stage 7 Deliverable & Gate C Determination Report (Reconciled with Analytical CRPS & Per-Refit Diagnostics)  
 **Authoritative References:** [research_protocol.md](file:///D:/IE612_Project/research_protocol.md), [stage5_modeling_specification.md](file:///D:/IE612_Project/stage5_modeling_specification.md), [gate_b_audit_report.md](file:///D:/IE612_Project/gate_b_audit_report.md), [implementation.md](file:///D:/IE612_Project/implementation.md)
 
 ---
 
 ## 1. Executive Summary & Gate C Determination
 
-### 1.1 Gate C Status: **PASSED / COMPLETE**
+### 1.1 Gate C Status: **QUALIFIED PASS / PASSED WITH VALIDATION CAVEATS**
 This report documents the completion of **Stage 7 Modeling and Validation** for the IE 612 research project, evaluating whether forward-looking option-implied risk-neutral moments ($Q_t \in \mathbb{R}^5$) and trailing historical market state ($X_t \in \mathbb{R}^6$) augmented with causally filtered latent market regime probabilities ($\pi_t \in \Delta^{K-1}$) produce superior physical density forecasts compared to a matched non-regime comparator:
 
 $$\text{Hypothesis Test: } \quad p(y_t \mid Q_t, X_t, \pi_t) \quad \text{versus} \quad p(y_t \mid Q_t, X_t)$$
 
 Under strict **User-Authorized Project Decisions** (Proposal A timing, complete-case filtering, test breach disclosure & exclusion rule, test continuity deferral to Gate D), models $B0$ through $B4$ and matched challenger $R1$ were fit on Development data (2010–2019) and evaluated via 21-session expanding-window walk-forward validation across the entire 2020–2021 Validation partition (494 complete-case scoring sessions).
+
+**Core Validation Caveats:**
+1. **Prequential Walk-Forward Evaluation:** The expanding-window walk-forward sequentially incorporates previously matured validation labels ($t \le \tau_m - 2$) into the training set for later validation blocks. The 2020–2021 results are therefore sequential prequential validation, not a static holdout from all model fitting.
+2. **Exploratory Hyperparameter Selection:** Because the same 2020–2021 validation partition informed hyperparameter selection ($K=2, \lambda=0.01$) and diagnostic checks, reported significance levels are exploratory rather than a final confirmatory test.
+3. **Calibration Limitations:** Kolmogorov-Smirnov tests on probability integral transforms reject uniformity at the 5% level for both primary models ($B4: p = 0.0109, R1: p = 0.0176$), and central interval empirical coverage departs from nominal levels. Gate C indicates numerical and optimization stability under the stated thresholds; it does not establish well-calibrated probabilistic forecasts.
+4. **Sensitivity Sign Reversal Is Inconclusive:** Truncating training to mid-2012 flips the point estimate differential from positive ($+0.0056$ nats) to negative ($-0.0052$ nats), but both full-sample and sensitivity 95% bootstrap intervals include zero. This finding demonstrates sensitivity to the training origin, but does not prove that $Q_t$ subsumes regimes or that the full-sample estimate was strictly an artifact of early monthly option gaps.
+5. **MDN Check Is Exploratory:** A 2-component Mixture Density Network attained an exploratory validation NLL of $-3.1388$ nats, but rolling-refit mode-collapse and component separation checks were not performed, and no matched regime MDN was evaluated. Single-component Student-$t$ remains the governing primary comparator.
+
+---
 
 ### 1.2 Summary of Primary Findings
 1. **Model Ladder Validation Hierarchy:**
@@ -31,20 +40,24 @@ Under strict **User-Authorized Project Decisions** (Proposal A timing, complete-
    - Diebold-Mariano test statistic: $\text{DM} = 0.7234$ ($p_{\text{one-sided}} = 0.2347$, $p_{\text{two-sided}} = 0.4694$).
    - Stationary Block Bootstrap 95% CI ($B=2,000$): $[-0.009480, +0.019914]$ (**strictly includes zero**).
    - **Conclusion on Full Development Sample:** The regime challenger $R1$ exhibits a positive average point estimate over baseline $B4$, but this difference is **statistically indistinguishable from zero** ($p = 0.235 > 0.05$) and fails the pre-registered threshold for practical significance ($\bar{d} < 0.010$ nats/session).
-3. **Mid-2012 Sensitivity Benchmark Finding ($N_{\text{train}} = 1,844$, Weekly Option Regime):**
-   - Truncating training to start on `2012-07-02` (eliminating the early monthly-only strike depth deficit in 2010–2011) completely reverses the differential:
-     - Baseline $B4$ NLL improves to **$-3.1146$ nats**;
-     - Challenger $R1$ NLL deteriorates to **$-3.1094$ nats**;
+3. **Mid-2012 Sensitivity Benchmark Finding ($N_{\text{train}} = 1,844$ Usable Supervised Pairs):**
+   - Truncating training to start on `2012-07-02` (eliminating the early monthly-only strike depth deficit in 2010–2011) changes the differential:
+     - Baseline $B4$ NLL: **$-3.1146$ nats**;
+     - Challenger $R1$ NLL: **$-3.1094$ nats**;
      - Mean differential becomes **negative**: $\bar{d} = \mathbf{-0.005240\text{ nats/session}}$ ($\text{DM} = -0.5455, p = 0.7073$);
      - Bootstrap 95% CI: $[-0.026132, +0.012317]$.
-   - **Critical Substantive Finding:** In a clean, continuous weekly option regime, the regime-conditioned challenger $R1$ **underperforms** the non-regime comparator $B4$. The slight apparent advantage of $R1$ on the full 2010–2019 sample was an artifact of the early 2010–2011 option data deficit.
+   - Both the full-sample point estimate ($+0.0056$) and the sensitivity point estimate ($-0.0052$) have confidence intervals spanning zero; this demonstrates empirical sensitivity to the estimation window without establishing that $R1$ definitively harms forecasting or that the full-sample estimate was purely an artifact.
 4. **Gate C Stability Criteria Verified:**
    - Predictive densities integrate to $1.0000$ (numerical quadrature error $< 6 \times 10^{-6}$ across calm and extreme volatility sessions).
    - Volatility scales remain strictly positive ($\sigma_t \ge 10^{-4}$ everywhere; empirical range $[0.0039, 0.6767]$).
    - Degrees of freedom satisfy heavy-tail bound ($\nu \ge 5.01 \ge 2.1$).
-   - Latent regimes satisfy occupancy ($\ge 45.3\%$) and dwell time ($\ge 5$ sessions) constraints.
+   - Latent regimes satisfy occupancy ($\ge 5\%$) and dwell time ($\ge 5$ sessions) constraints at **every single one of the 25 refit blocks** without parameter forcing.
    - Zero NaN or Inf losses across all 494 scoring sessions.
-5. **Test Partition Integrity:**
+5. **Student-$t$ CRPS Exact Closed-Form Implementation:**
+   - Vectorized Student-$t$ CRPS audited against high-accuracy numerical quadrature; previous 30-node quadrature truncated to $[\mu - 12\sigma, \mu + 12\sigma]$ reached empirical errors up to $1.89 \times 10^{-6}$ on extreme standardized observations.
+   - Replaced with the exact closed-form analytical expression from Jordan, Krüger, and Lerch (2019), guaranteeing $< 10^{-14}$ error over the entire real line $(-\infty, \infty)$.
+6. **Test Partition Integrity:**
+   - Disclosed that the 2022-01-03 and 2022-01-04 cash closes and derived 2021-12-31 validation return remain in Git history (`cee01a1`), pre-registered for exclusion from eventual test scoring.
    - Raw 2022–2023 option bundles in `Data/SPX Options Chain/` remain **strictly unopened and unread**.
    - Stage 6 candidate CSV hashes remain 100% invariant.
 
@@ -72,7 +85,7 @@ All models were implemented in Python 3.12 using PyTorch 2.14.1 and SciPy 1.14.1
 * **Model B0 (Unconditional Gaussian):**
   $$\widehat{p}_{t+2 \mid t}^{(B0)}(y) = \mathcal{N}\big(\mu_\tau, \sigma_\tau^2\big)$$
   Estimated via sample mean and Bessel-corrected sample standard deviation on $\mathcal{T}_{\text{sup},\tau_m}$.
-* **Model B1 (Trailing RV Location-Scale Student-$t$):**
+* **Model B1 (Trailing RV Student-$t$):**
   $$\sigma_t = \alpha_0 + \alpha_1 \text{RV}_{20d,t}, \quad \mu_t = \mu, \quad \nu \ge 2.1$$
   Parameterization: $\alpha_0 = \text{softplus}(\theta_0) + 10^{-4}$, $\alpha_1 = \text{softplus}(\theta_1)$, $\nu = \text{softplus}(\theta_\nu) + 2.1$. Estimated via maximum likelihood using L-BFGS with Strong Wolfe line search.
 * **Models B2, B3, B4, and R1 (Location-Scale Student-$t$ Regression):**
@@ -116,8 +129,8 @@ Evaluated across 25 walk-forward blocks on the 494 complete-case validation sess
 * **Architecture:** 2-component Mixture Density Network ($M=2$) on $[Q_t, X_t] \in \mathbb{R}^{11}$:
   $$\widehat{p}(y \mid \mathbf{u}_t) = w_1(\mathbf{u}_t) \frac{1}{\sigma_1(\mathbf{u}_t)} f_{\nu_1}\left(\frac{y - \mu_1(\mathbf{u}_t)}{\sigma_1(\mathbf{u}_t)}\right) + w_2(\mathbf{u}_t) \frac{1}{\sigma_2(\mathbf{u}_t)} f_{\nu_2}\left(\frac{y - \mu_2(\mathbf{u}_t)}{\sigma_2(\mathbf{u}_t)}\right)$$
   with mixing weight $w_1 = \text{sigmoid}(\mathbf{w}_w^\top \mathbf{u}_t + b_w)$.
-* **Validation Performance:** $B4_{\text{MDN}}$ achieved validation NLL of **$-3.1388$ nats** ($\Delta\text{NLL} = +0.0267$ nats improvement over single-component Student-$t$).
-* **Protocol Resolution (OD-2):** Single-component Student-$t$ is strictly retained as the primary comparator for the hypothesis test against $R1$. Because $R1$ must match $B4$'s architecture identically, evaluating a regime-conditioned MDN introduces severe mixture identifiability and label-switching risks across rolling refits. The MDN result confirms return asymmetry and multimodality in 2020–2021, which will be incorporated into the final research synthesis.
+* **Validation Performance:** $B4_{\text{MDN}}$ achieved validation NLL of **$-3.1388$ nats** ($0.0267$ nats lower than the single-component Student-$t$ NLL under this run).
+* **Protocol Resolution (OD-2):** Single-component Student-$t$ remains the primary comparator for the $R1$ hypothesis test. The saved run does not document mode-collapse diagnostics, component separation, or rolling-refit stability, and no matched regime-conditioned MDN was evaluated. The MDN result is therefore exploratory and does not satisfy the protocol's requirement to establish improved validation performance with zero mode collapse; it does not by itself establish multimodality.
 
 ---
 
@@ -149,7 +162,7 @@ To guarantee strict compliance with user-authorized Proposal A ($y_t \equiv \ln(
 | Metric / Diagnostic            | B0 (Uncond) | B1 (RV-t)   | B2 (Q-Only) | B3 (X-Only) | B4 (Combined) | R1 (Regime)   |
 +--------------------------------+-------------+-------------+-------------+-------------+---------------+---------------+
 | **Negative Log-Likelihood**    | -2.1245     | -3.0636     | -3.1188     | -3.0837     | **-3.1120**   | **-3.1176**   |
-| **CRPS**                       | 0.007778    | 0.007332    | 0.007501    | 0.010774    | **0.007732**   | **0.007935**   |
+| **CRPS (Analytical Exact)**    | 0.007778    | 0.007332    | 0.007501    | 0.010774    | **0.007732**   | **0.007935**   |
 | **Mean Predictive Scale**      | 0.010000    | 0.008529    | 0.011852    | 0.026405    | 0.012680      | 0.013942      |
 | **Mean Degrees of Freedom**    | -- (Gauss)  | 5.021       | 5.016       | 5.017       | 5.014         | 5.012         |
 +--------------------------------+-------------+-------------+-------------+-------------+---------------+---------------+
@@ -192,6 +205,32 @@ To assess in-sample explanatory power vs. out-of-sample generalization:
 * **In-Sample Differential:** $\bar{d}_{\text{dev}} = +0.005501$ nats ($\text{DM} = 1.9165, p = 0.0277$).
 * **Observation:** In-sample, adding regimes yielded a statistically detectable but modest $+0.0055$ nats edge. However, out-of-sample on Validation, this edge failed to achieve statistical significance.
 
+### 5.4 Student-$t$ CRPS Audit, Validation & Closed-Form Correction
+1. **Audit of Truncated Numerical Quadrature:**
+   The initial implementation in `src/models/evaluation_metrics.py` utilized a 30-node Gauss-Legendre quadrature split over $[\mu - 12\sigma, y]$ and $[y, \mu + 12\sigma]$, asserting $10^{-8}$ accuracy. An audit against double-precision numerical integration over $(-\infty, \infty)$ revealed:
+   - For extreme standardized returns (such as $|z| = 8.79$ on Model $B3$ and $|z| = 8.63$ on Model $R1$), polynomial node density across wide asymmetric intervals produced an observed maximum absolute error of $1.8891 \times 10^{-6}$ (relative error $3.27 \times 10^{-5}$) in sensitivity Model $B3$, and $1.2316 \times 10^{-6}$ in primary Model $B3$, failing the claimed $10^{-8}$ bound.
+   - Truncation to $\pm 12\sigma$ would additionally fail if extreme market outliers exceeded $|z| > 12$.
+2. **Adoption of Analytical Closed-Form Formula:**
+   To guarantee exact precision across the entire real line without numerical truncation, `src/models/evaluation_metrics.py` was updated to implement the exact closed-form analytical expression for Student-$t$ CRPS from Jordan, Krüger, and Lerch (2019):
+   $$\text{CRPS}(F_{\nu, \mu, \sigma}, y) = \sigma \left[ z \big(2F_\nu(z) - 1\big) + 2f_\nu(z)\left(\frac{\nu + z^2}{\nu - 1}\right) - \frac{2\sqrt{\nu}}{\nu - 1}\frac{B\left(\frac{1}{2}, \nu - \frac{1}{2}\right)}{B\left(\frac{1}{2}, \frac{\nu}{2}\right)^2}\right]$$
+   where $z = (y - \mu)/\sigma$.
+   This closed form is valid for all $\nu > 1$. Benchmark verification against `scipy.integrate.quad` with $10^{-12}$ tolerance confirmed that the formula is accurate to machine precision ($< 10^{-14}$) across all degrees of freedom ($\nu \in [2.1, 100]$) and standardized returns ($z \in [-15, +25]$).
+3. **Recomputation Impact:**
+   Recomputing all validation scores with the exact analytical formula produced a mean absolute difference of $< 3.8 \times 10^{-9}$ across all models; rounded to 6 decimal places, the reported table values ($B0: 0.007778, B1: 0.007332, B2: 0.007501, B3: 0.010774, B4: 0.007732, R1: 0.007935$) are fully invariant. Negative Log-Likelihood, Diebold-Mariano test statistics, and bootstrap intervals are independent of CRPS and remain identically unchanged.
+
+### 5.5 Per-Refit HMM Diagnostics & Regime Stability Verification
+To verify the latent regime persistence and non-degeneracy constraints specified in the protocol, complete diagnostics for each of the 25 walk-forward refit blocks were persisted to:
+* `output/stage7_models/hmm_refit_diagnostics_primary.json`
+* `output/stage7_models/hmm_refit_diagnostics_sensitivity.json`
+
+Across all 25 refit blocks, the following protocol constraints were verified **without forcing any model parameters**:
+1. **Expected Dwell Time ($\mathbb{E}[D_k] = 1 / (1 - A_{kk}) \ge 5.0$ sessions):**
+   - **Primary Run:** State 0 dwell times range from $75.34$ to $114.97$ sessions; State 1 dwell times range from $40.96$ to $46.53$ sessions. Overall minimum observed dwell time is $40.96$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
+   - **Mid-2012 Sensitivity Run:** State 0 dwell times range from $56.62$ to $125.60$ sessions; State 1 dwell times range from $31.98$ to $39.49$ sessions. Overall minimum observed dwell time is $31.98$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
+2. **Empirical State Occupancy ($\text{Occupancy}(k) \ge 5.0\%$):**
+   - **Primary Run:** Training argmax occupancies range from $26.38\%$ to $73.62\%$ across all refits (validation argmax occupancy: $54.66\%$ / $45.34\%$). Passing the $\ge 5.0\%$ threshold at **25 of 25 refits (100%)**.
+   - **Mid-2012 Sensitivity Run:** Training argmax occupancies range from $21.87\%$ to $78.13\%$ across all refits. Passing the $\ge 5.0\%$ threshold at **25 of 25 refits (100%)**.
+
 ---
 
 ## 6. Mid-2012 Sensitivity Benchmark Analysis
@@ -221,11 +260,8 @@ As documented in the Gate B audit, the early development sample (2010–2011) wa
 ```
 
 ### 6.3 Interpretation & Theoretical Implications
-1. **Sign Reversal:** Under the clean weekly option regime, the out-of-sample differential between $R1$ and $B4$ **flips sign from positive (+0.0056) to negative (-0.0052 nats/session)**.
-2. **Rejection of the Regime Hypothesis:**
-   - When trained on high-quality option surfaces, forward-looking option-implied features $Q_t$ already subsume the predictive information regarding upcoming volatility shifts.
-   - Adding trailing Gaussian HMM regime probabilities $\pi_t$ introduces parameter estimation noise ($11 \to 13$ dimensions) that harms out-of-sample density calibration.
-   - The slight apparent edge of $R1$ in the 2010–2019 sample was purely an artifact of regimes acting as a proxy for missing option moments during the 2010–2011 monthly expiration gaps!
+1. **Sign Reversal:** Under the mid-2012 training window, the estimated $R1$-$B4$ differential changes from $+0.0056$ to $-0.0052$ nats/session; both estimates are statistically inconclusive and both bootstrap intervals include zero.
+2. **Substantive Interpretation:** These results demonstrate empirical sensitivity to the estimation window. However, they do not definitively establish that $Q_t$ subsumes all regime information, that adding $\pi_t$ harms forecasting, or that the full-sample estimate is an artifact of early option-data gaps. Such explanations remain competing hypotheses to be tested during final Held-Out evaluation.
 
 ---
 
@@ -234,16 +270,16 @@ As documented in the Gate B audit, the early development sample (2010–2011) wa
 ### 7.1 Status of Decision Gates
 
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                    Project Gate Status Matrix                                      |
-+----------------------------------------------------------------------------------------------------+
-| Gate   | Name                                | Current Status        | Evidence / Justification    |
-+--------+-------------------------------------+-----------------------+-----------------------------+
-| Gate A | Local Data Feasibility Gate         | QUALIFIED PASS        | Stage 3 pilot verification  |
-| Gate B | Calendar & Feature Construction Gate| QUALIFIED PASS (UD)   | Resolved by UD-1 to UD-5    |
-| Gate C | Baseline & Density Stability Gate   | **PASSED / COMPLETE** | Stage 7 models validated    |
-| Gate D | Final Held-Out Test Evaluation Gate | **PENDING / BLOCKED** | Held-Out 2022–2023 partition |
-+----------------------------------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------------------+
+|                                               Project Gate Status Matrix                                                |
++-------------------------------------------------------------------------------------------------------------------------+
+| Gate   | Name                                | Current Status                           | Evidence / Justification      |
++--------+-------------------------------------+------------------------------------------+-------------------------------+
+| Gate A | Local Data Feasibility Gate         | QUALIFIED PASS                           | Stage 3 pilot verification    |
+| Gate B | Calendar & Feature Construction Gate| QUALIFIED PASS (UD)                      | Resolved by UD-1 to UD-5      |
+| Gate C | Baseline & Density Stability Gate   | **QUALIFIED PASS / PASSED WITH CAVEATS** | Stability verified; caveats doc|
+| Gate D | Final Held-Out Test Evaluation Gate | **PENDING / BLOCKED**                    | Held-Out 2022–2023 partition  |
++-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ### 7.2 Strict Protection of Held-Out Test Partition
@@ -263,6 +299,8 @@ All Stage 7 modeling artifacts have been generated and archived in `output/stage
 * `output/stage7_models/validation_predictions_primary.csv` (Date-level forecasts for all models across 494 validation sessions).
 * `output/stage7_models/validation_predictions_sensitivity_2012.csv` (Date-level forecasts for mid-2012 sensitivity benchmark).
 * `output/stage7_models/validation_metrics_summary.json` (Full validation metrics, DM tests, and bootstrap CIs).
+* `output/stage7_models/hmm_refit_diagnostics_primary.json` (Per-refit HMM transition matrices, dwell times, and occupancies for primary run).
+* `output/stage7_models/hmm_refit_diagnostics_sensitivity.json` (Per-refit HMM diagnostics for mid-2012 sensitivity run).
 * `output/stage7_models/sensitivity_analysis_summary.json` (Comparison of full sample vs. mid-2012 benchmark).
 * `output/stage7_models/insample_metrics_summary.json` (In-sample development performance).
 * `output/stage7_models/hyperparameter_tuning_results.json` (Grid search results for $K \in \{2, 3\}, \lambda \in \{10^{-4}, 10^{-3}, 10^{-2}\}$).
@@ -271,8 +309,8 @@ All Stage 7 modeling artifacts have been generated and archived in `output/stage
 ### 8.2 Execution Scripts
 * [`src/models/density_models.py`](file:///D:/IE612_Project/src/models/density_models.py): Implements $B0, B1, B2, B3, B4, R1$, and 2-component MDN.
 * [`src/models/hmm_filter.py`](file:///D:/IE612_Project/src/models/hmm_filter.py): Causal Gaussian HMM with Baum-Welch EM and causal forward recursion.
-* [`src/models/evaluation_metrics.py`](file:///D:/IE612_Project/src/models/evaluation_metrics.py): Vectorized CRPS, NLL, PIT, coverage, pinball, Diebold-Mariano, and block bootstrap.
-* [`src/models/walk_forward_pipeline.py`](file:///D:/IE612_Project/src/models/walk_forward_pipeline.py): Monthly expanding walk-forward engine.
+* [`src/models/evaluation_metrics.py`](file:///D:/IE612_Project/src/models/evaluation_metrics.py): Exact analytical Student-$t$ CRPS (Jordan et al., 2019), Gaussian CRPS, NLL, PIT, coverage, pinball, Diebold-Mariano, and block bootstrap.
+* [`src/models/walk_forward_pipeline.py`](file:///D:/IE612_Project/src/models/walk_forward_pipeline.py): Monthly expanding walk-forward engine with per-refit diagnostic collection.
 * [`scratch/run_stage7_experiments.py`](file:///D:/IE612_Project/scratch/run_stage7_experiments.py): End-to-end experiment driver.
 
 ---

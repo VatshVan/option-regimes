@@ -254,14 +254,45 @@ def run_walk_forward(
         if include_mdn and m_mdn is not None:
             preds['B4_MDN']['log_p'][score_indices] = m_mdn.log_density(QX_score_scaled, y_score)
             
+        # HMM Diagnostics for this refit block
+        dwells = hmm.compute_dwell_times()
+        trans = hmm.trans_mat
+        diags = np.diag(trans)
+        pi_train = pi_eval[:len(hmm_indices)]
+        occ_argmax = hmm.compute_occupancies(pi_train)
+        occ_mean = np.mean(pi_train, axis=0)
+        
+        dwell_pass = bool(np.all(dwells >= 5.0))
+        occ_pass = bool(np.all(occ_argmax >= 0.05))
+        
         refit_diagnostics.append({
             'block': block_num,
             'refit_origin_tau': int(tau_m),
             'refit_date': str(df_all['date'].iloc[tau_m]),
-            'n_train_sup': int(len(train_sup_indices)),
-            'score_dates': f"{df_all['date'].iloc[score_start]} to {df_all['date'].iloc[score_end - 1]}",
-            'n_scored': int(score_end - score_start),
-            'hmm_dwell_times': [float(d) for d in hmm.compute_dwell_times()]
+            'train_window': {
+                'start_idx': int(start_train_idx),
+                'start_date': str(df_all['date'].iloc[start_train_idx]),
+                'end_idx': int(tau_m),
+                'end_date': str(df_all['date'].iloc[tau_m]),
+                'n_sessions_hmm': int(len(hmm_indices)),
+                'sup_cutoff_tau': int(sup_tau),
+                'sup_cutoff_date': str(df_all['date'].iloc[sup_tau]),
+                'n_train_sup': int(len(train_sup_indices))
+            },
+            'scoring_window': {
+                'score_start_idx': int(score_start),
+                'score_end_idx': int(score_end),
+                'score_dates': f"{df_all['date'].iloc[score_start]} to {df_all['date'].iloc[score_end - 1]}",
+                'n_scored': int(score_end - score_start)
+            },
+            'hmm_transition_matrix': trans.tolist(),
+            'hmm_diagonal_probabilities': [float(d) for d in diags],
+            'hmm_expected_dwell_times': [float(d) for d in dwells],
+            'hmm_state_occupancies_train_argmax': [float(o) for o in occ_argmax],
+            'hmm_state_occupancies_train_mean': [float(o) for o in occ_mean],
+            'dwell_time_constraint_pass': dwell_pass,
+            'occupancy_constraint_pass': occ_pass,
+            'all_constraints_pass': bool(dwell_pass and occ_pass)
         })
         
     # Evaluate performance on the 494 complete-case validation scoring rows

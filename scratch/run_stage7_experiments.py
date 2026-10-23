@@ -172,6 +172,30 @@ def main():
         json.dump(val_summary, f, indent=2)
     print(f"Saved primary validation metrics summary to {out_dir}/validation_metrics_summary.json")
     
+    # Save Primary Per-Refit HMM Diagnostics
+    primary_hmm_diag = {
+        'run_name': 'primary_walk_forward',
+        'n_regimes_K': selected_K,
+        'lambda_reg': best_lambda,
+        'total_refit_blocks': len(primary_run['refit_diagnostics']),
+        'constraints': {
+            'min_dwell_time_required': 5.0,
+            'min_occupancy_required': 0.05
+        },
+        'all_blocks_dwell_pass': all(b['dwell_time_constraint_pass'] for b in primary_run['refit_diagnostics']),
+        'all_blocks_occupancy_pass': all(b['occupancy_constraint_pass'] for b in primary_run['refit_diagnostics']),
+        'all_blocks_pass': all(b['all_constraints_pass'] for b in primary_run['refit_diagnostics']),
+        'min_dwell_time_observed': float(min(min(b['hmm_expected_dwell_times']) for b in primary_run['refit_diagnostics'])),
+        'max_dwell_time_observed': float(max(max(b['hmm_expected_dwell_times']) for b in primary_run['refit_diagnostics'])),
+        'min_occupancy_argmax_observed': float(min(min(b['hmm_state_occupancies_train_argmax']) for b in primary_run['refit_diagnostics'])),
+        'max_occupancy_argmax_observed': float(max(max(b['hmm_state_occupancies_train_argmax']) for b in primary_run['refit_diagnostics'])),
+        'blocks': primary_run['refit_diagnostics']
+    }
+    with open(f"{out_dir}/hmm_refit_diagnostics_primary.json", "w") as f:
+        json.dump(primary_hmm_diag, f, indent=2)
+    print(f"Saved primary HMM refit diagnostics to {out_dir}/hmm_refit_diagnostics_primary.json")
+    print(f"  Primary HMM: all_dwell_pass={primary_hmm_diag['all_blocks_dwell_pass']}, all_occ_pass={primary_hmm_diag['all_blocks_occupancy_pass']}")
+    
     # 5. Mid-2012 Sensitivity Benchmark Run
     print(f"\n================================================================================")
     print(f"MID-2012 SENSITIVITY BENCHMARK RUN (Start: 2012-07-02, K={selected_K}, lambda={best_lambda})")
@@ -218,6 +242,32 @@ def main():
     with open(f"{out_dir}/sensitivity_analysis_summary.json", "w") as f:
         json.dump(sens_summary, f, indent=2)
     print(f"Saved sensitivity analysis summary to {out_dir}/sensitivity_analysis_summary.json")
+    
+    # Save Sensitivity Per-Refit HMM Diagnostics
+    sens_hmm_diag = {
+        'run_name': 'mid_2012_sensitivity_walk_forward',
+        'start_date': '2012-07-02',
+        'start_index': int(idx_2012),
+        'n_regimes_K': selected_K,
+        'lambda_reg': best_lambda,
+        'total_refit_blocks': len(sens_run['refit_diagnostics']),
+        'constraints': {
+            'min_dwell_time_required': 5.0,
+            'min_occupancy_required': 0.05
+        },
+        'all_blocks_dwell_pass': all(b['dwell_time_constraint_pass'] for b in sens_run['refit_diagnostics']),
+        'all_blocks_occupancy_pass': all(b['occupancy_constraint_pass'] for b in sens_run['refit_diagnostics']),
+        'all_blocks_pass': all(b['all_constraints_pass'] for b in sens_run['refit_diagnostics']),
+        'min_dwell_time_observed': float(min(min(b['hmm_expected_dwell_times']) for b in sens_run['refit_diagnostics'])),
+        'max_dwell_time_observed': float(max(max(b['hmm_expected_dwell_times']) for b in sens_run['refit_diagnostics'])),
+        'min_occupancy_argmax_observed': float(min(min(b['hmm_state_occupancies_train_argmax']) for b in sens_run['refit_diagnostics'])),
+        'max_occupancy_argmax_observed': float(max(max(b['hmm_state_occupancies_train_argmax']) for b in sens_run['refit_diagnostics'])),
+        'blocks': sens_run['refit_diagnostics']
+    }
+    with open(f"{out_dir}/hmm_refit_diagnostics_sensitivity.json", "w") as f:
+        json.dump(sens_hmm_diag, f, indent=2)
+    print(f"Saved sensitivity HMM refit diagnostics to {out_dir}/hmm_refit_diagnostics_sensitivity.json")
+    print(f"  Sensitivity HMM: all_dwell_pass={sens_hmm_diag['all_blocks_dwell_pass']}, all_occ_pass={sens_hmm_diag['all_blocks_occupancy_pass']}")
     
     # 6. In-Sample Development Fit (2010–2019)
     print(f"\n================================================================================")
