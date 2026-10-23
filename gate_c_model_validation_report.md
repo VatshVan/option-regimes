@@ -225,8 +225,8 @@ To verify the latent regime persistence and non-degeneracy constraints specified
 
 Across all 25 refit blocks, the following protocol constraints were verified **without forcing any model parameters**:
 1. **Expected Dwell Time ($\mathbb{E}[D_k] = 1 / (1 - A_{kk}) \ge 5.0$ sessions):**
-   - **Primary Run:** State 0 dwell times range from $75.34$ to $114.97$ sessions; State 1 dwell times range from $40.96$ to $46.53$ sessions. Overall minimum observed dwell time is $40.96$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
-   - **Mid-2012 Sensitivity Run:** State 0 dwell times range from $56.62$ to $125.60$ sessions; State 1 dwell times range from $31.98$ to $39.49$ sessions. Overall minimum observed dwell time is $31.98$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
+   - **Primary Run:** State 0 dwell times range from $74.74$ to $114.97$ sessions; State 1 dwell times range from $40.96$ to $48.01$ sessions. Overall minimum observed dwell time is $40.96$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
+   - **Mid-2012 Sensitivity Run:** State 0 dwell times range from $54.78$ to $125.60$ sessions; State 1 dwell times range from $31.98$ to $39.59$ sessions. Overall minimum observed dwell time is $31.98$ sessions, passing the $\ge 5.0$ threshold at **25 of 25 refits (100%)**.
 2. **Empirical State Occupancy ($\text{Occupancy}(k) \ge 5.0\%$):**
    - **Primary Run:** Training argmax occupancies range from $26.38\%$ to $73.62\%$ across all refits (validation argmax occupancy: $54.66\%$ / $45.34\%$). Passing the $\ge 5.0\%$ threshold at **25 of 25 refits (100%)**.
    - **Mid-2012 Sensitivity Run:** Training argmax occupancies range from $21.87\%$ to $78.13\%$ across all refits. Passing the $\ge 5.0\%$ threshold at **25 of 25 refits (100%)**.

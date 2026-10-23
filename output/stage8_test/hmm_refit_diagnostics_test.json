@@ -1,0 +1,1219 @@
+{
+  "run_name": "test_walk_forward_2022_2023",
+  "n_regimes_K": 2,
+  "lambda_reg": 0.01,
+  "total_refit_blocks": 24,
+  "constraints": {
+    "min_dwell_time_required": 5.0,
+    "min_occupancy_required": 0.05
+  },
+  "all_blocks_dwell_pass": true,
+  "all_blocks_occupancy_pass": true,
+  "all_blocks_pass": true,
+  "min_dwell_time_observed": 45.189433800594806,
+  "max_dwell_time_observed": 116.67221028124266,
+  "min_occupancy_argmax_observed": 0.29261833829857664,
+  "max_occupancy_argmax_observed": 0.7073816617014234,
+  "blocks": [
+    {
+      "block": 0,
+      "refit_origin_tau": 3020,
+      "refit_date": "2021-12-31",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3020,
+        "end_date": "2021-12-31",
+        "n_sessions_hmm": 3021,
+        "sup_cutoff_tau": 3018,
+        "sup_cutoff_date": "2021-12-29",
+        "n_train_sup": 2725
+      },
+      "scoring_window": {
+        "score_start_idx": 3021,
+        "score_end_idx": 3042,
+        "score_dates": "2022-01-03 to 2022-02-01",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9905269505403923,
+          0.009473049459607679
+        ],
+        [
+          0.02212906681709384,
+          0.9778709331829062
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9905269505403923,
+        0.9778709331829062
+      ],
+      "hmm_expected_dwell_times": [
+        105.56262840850961,
+        45.189433800594806
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.7073816617014234,
+        0.29261833829857664
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.7031315311863329,
+        0.2968684688136656
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 1,
+      "refit_origin_tau": 3041,
+      "refit_date": "2022-02-01",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3041,
+        "end_date": "2022-02-01",
+        "n_sessions_hmm": 3042,
+        "sup_cutoff_tau": 3039,
+        "sup_cutoff_date": "2022-01-28",
+        "n_train_sup": 2744
+      },
+      "scoring_window": {
+        "score_start_idx": 3042,
+        "score_end_idx": 3063,
+        "score_dates": "2022-02-02 to 2022-03-03",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9904762476831064,
+          0.009523752316893619
+        ],
+        [
+          0.021566443242962384,
+          0.9784335567570376
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9904762476831064,
+        0.9784335567570376
+      ],
+      "hmm_expected_dwell_times": [
+        105.00063071003635,
+        46.36833198382496
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.7024983563445102,
+        0.2975016436554898
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6983584554370406,
+        0.30164154456295894
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 2,
+      "refit_origin_tau": 3062,
+      "refit_date": "2022-03-03",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3062,
+        "end_date": "2022-03-03",
+        "n_sessions_hmm": 3063,
+        "sup_cutoff_tau": 3060,
+        "sup_cutoff_date": "2022-03-01",
+        "n_train_sup": 2765
+      },
+      "scoring_window": {
+        "score_start_idx": 3063,
+        "score_end_idx": 3084,
+        "score_dates": "2022-03-04 to 2022-04-01",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.990519550836548,
+          0.009480449163451915
+        ],
+        [
+          0.020845586874121465,
+          0.9791544131258786
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.990519550836548,
+        0.9791544131258786
+      ],
+      "hmm_expected_dwell_times": [
+        105.48023440229903,
+        47.97178443757043
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6950701926216128,
+        0.3049298073783872
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.691914097268447,
+        0.3080859027315538
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 3,
+      "refit_origin_tau": 3083,
+      "refit_date": "2022-04-01",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3083,
+        "end_date": "2022-04-01",
+        "n_sessions_hmm": 3084,
+        "sup_cutoff_tau": 3081,
+        "sup_cutoff_date": "2022-03-30",
+        "n_train_sup": 2786
+      },
+      "scoring_window": {
+        "score_start_idx": 3084,
+        "score_end_idx": 3105,
+        "score_dates": "2022-04-04 to 2022-05-03",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9905492781561304,
+          0.0094507218438696
+        ],
+        [
+          0.02022819623675781,
+          0.9797718037632421
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9905492781561304,
+        0.9797718037632421
+      ],
+      "hmm_expected_dwell_times": [
+        105.81202330578232,
+        49.43594516760917
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6893644617380026,
+        0.3106355382619974
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6859620987007804,
+        0.31403790129921844
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 4,
+      "refit_origin_tau": 3104,
+      "refit_date": "2022-05-03",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3104,
+        "end_date": "2022-05-03",
+        "n_sessions_hmm": 3105,
+        "sup_cutoff_tau": 3102,
+        "sup_cutoff_date": "2022-04-29",
+        "n_train_sup": 2807
+      },
+      "scoring_window": {
+        "score_start_idx": 3105,
+        "score_end_idx": 3126,
+        "score_dates": "2022-05-04 to 2022-06-02",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9905724299482133,
+          0.009427570051786769
+        ],
+        [
+          0.019626688716898783,
+          0.9803733112831012
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9905724299482133,
+        0.9803733112831012
+      ],
+      "hmm_expected_dwell_times": [
+        106.07187159648603,
+        50.95102971389109
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6827697262479872,
+        0.3172302737520129
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.679705670273385,
+        0.32029432972661087
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 5,
+      "refit_origin_tau": 3125,
+      "refit_date": "2022-06-02",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3125,
+        "end_date": "2022-06-02",
+        "n_sessions_hmm": 3126,
+        "sup_cutoff_tau": 3123,
+        "sup_cutoff_date": "2022-05-31",
+        "n_train_sup": 2828
+      },
+      "scoring_window": {
+        "score_start_idx": 3126,
+        "score_end_idx": 3147,
+        "score_dates": "2022-06-03 to 2022-07-05",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9905866837127344,
+          0.009413316287265609
+        ],
+        [
+          0.01926344054130288,
+          0.9807365594586972
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9905866837127344,
+        0.9807365594586972
+      ],
+      "hmm_expected_dwell_times": [
+        106.23248698790738,
+        51.91180660878813
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6794625719769674,
+        0.32053742802303264
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6761748628439493,
+        0.32382513715605316
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 6,
+      "refit_origin_tau": 3146,
+      "refit_date": "2022-07-05",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3146,
+        "end_date": "2022-07-05",
+        "n_sessions_hmm": 3147,
+        "sup_cutoff_tau": 3144,
+        "sup_cutoff_date": "2022-06-30",
+        "n_train_sup": 2849
+      },
+      "scoring_window": {
+        "score_start_idx": 3147,
+        "score_end_idx": 3168,
+        "score_dates": "2022-07-06 to 2022-08-03",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.990603280857742,
+          0.009396719142257981
+        ],
+        [
+          0.0188546784683293,
+          0.9811453215316708
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.990603280857742,
+        0.9811453215316708
+      ],
+      "hmm_expected_dwell_times": [
+        106.42012226404582,
+        53.03723432249086
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.674928503336511,
+        0.32507149666348906
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6719255715112626,
+        0.3280744284887358
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 7,
+      "refit_origin_tau": 3167,
+      "refit_date": "2022-08-03",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3167,
+        "end_date": "2022-08-03",
+        "n_sessions_hmm": 3168,
+        "sup_cutoff_tau": 3165,
+        "sup_cutoff_date": "2022-08-01",
+        "n_train_sup": 2870
+      },
+      "scoring_window": {
+        "score_start_idx": 3168,
+        "score_end_idx": 3189,
+        "score_dates": "2022-08-04 to 2022-09-01",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9906245945588894,
+          0.009375405441110561
+        ],
+        [
+          0.01834435222618135,
+          0.9816556477738185
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9906245945588894,
+        0.9816556477738185
+      ],
+      "hmm_expected_dwell_times": [
+        106.66205384729918,
+        54.51269075463878
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6688762626262627,
+        0.33112373737373735
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6661283531898999,
+        0.33387164681010073
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 8,
+      "refit_origin_tau": 3188,
+      "refit_date": "2022-09-01",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3188,
+        "end_date": "2022-09-01",
+        "n_sessions_hmm": 3189,
+        "sup_cutoff_tau": 3186,
+        "sup_cutoff_date": "2022-08-30",
+        "n_train_sup": 2891
+      },
+      "scoring_window": {
+        "score_start_idx": 3189,
+        "score_end_idx": 3210,
+        "score_dates": "2022-09-02 to 2022-10-03",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.990638277939802,
+          0.009361722060198027
+        ],
+        [
+          0.01783953593309441,
+          0.9821604640669056
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.990638277939802,
+        0.9821604640669056
+      ],
+      "hmm_expected_dwell_times": [
+        106.8179543859313,
+        56.055269809170575
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6625901536531829,
+        0.3374098463468172
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6598997090230806,
+        0.3401002909769205
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 9,
+      "refit_origin_tau": 3209,
+      "refit_date": "2022-10-03",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3209,
+        "end_date": "2022-10-03",
+        "n_sessions_hmm": 3210,
+        "sup_cutoff_tau": 3207,
+        "sup_cutoff_date": "2022-09-29",
+        "n_train_sup": 2912
+      },
+      "scoring_window": {
+        "score_start_idx": 3210,
+        "score_end_idx": 3231,
+        "score_dates": "2022-10-04 to 2022-11-01",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9906493337217879,
+          0.009350666278212181
+        ],
+        [
+          0.017424143963569245,
+          0.9825758560364308
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9906493337217879,
+        0.9825758560364308
+      ],
+      "hmm_expected_dwell_times": [
+        106.94425084232635,
+        57.39162865566449
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6570093457943925,
+        0.3429906542056075
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6547342235002938,
+        0.3452657764997061
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 10,
+      "refit_origin_tau": 3230,
+      "refit_date": "2022-11-01",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3230,
+        "end_date": "2022-11-01",
+        "n_sessions_hmm": 3231,
+        "sup_cutoff_tau": 3228,
+        "sup_cutoff_date": "2022-10-28",
+        "n_train_sup": 2933
+      },
+      "scoring_window": {
+        "score_start_idx": 3231,
+        "score_end_idx": 3252,
+        "score_dates": "2022-11-02 to 2022-12-01",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9906632924135532,
+          0.009336707586446879
+        ],
+        [
+          0.01706710422767356,
+          0.9829328957723265
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9906632924135532,
+        0.9829328957723265
+      ],
+      "hmm_expected_dwell_times": [
+        107.10413609307054,
+        58.59224779201528
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6527390900649953,
+        0.34726090993500464
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6503955972717276,
+        0.3496044027282683
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 11,
+      "refit_origin_tau": 3251,
+      "refit_date": "2022-12-01",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3251,
+        "end_date": "2022-12-01",
+        "n_sessions_hmm": 3252,
+        "sup_cutoff_tau": 3249,
+        "sup_cutoff_date": "2022-11-29",
+        "n_train_sup": 2954
+      },
+      "scoring_window": {
+        "score_start_idx": 3252,
+        "score_end_idx": 3273,
+        "score_dates": "2022-12-02 to 2023-01-03",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9906756622834467,
+          0.009324337716553336
+        ],
+        [
+          0.01672472766115736,
+          0.9832752723388427
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9906756622834467,
+        0.9832752723388427
+      ],
+      "hmm_expected_dwell_times": [
+        107.2462227772728,
+        59.791706045083885
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6485239852398524,
+        0.3514760147601476
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.646085661604732,
+        0.35391433839526765
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 12,
+      "refit_origin_tau": 3272,
+      "refit_date": "2023-01-03",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3272,
+        "end_date": "2023-01-03",
+        "n_sessions_hmm": 3273,
+        "sup_cutoff_tau": 3270,
+        "sup_cutoff_date": "2022-12-29",
+        "n_train_sup": 2975
+      },
+      "scoring_window": {
+        "score_start_idx": 3273,
+        "score_end_idx": 3294,
+        "score_dates": "2023-01-04 to 2023-02-02",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9906720926379051,
+          0.00932790736209498
+        ],
+        [
+          0.016325634274413806,
+          0.9836743657255862
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9906720926379051,
+        0.9836743657255862
+      ],
+      "hmm_expected_dwell_times": [
+        107.20518131040039,
+        61.25336285201737
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6422242590895203,
+        0.3577757409104797
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6402053595198637,
+        0.35979464048013543
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 13,
+      "refit_origin_tau": 3293,
+      "refit_date": "2023-02-02",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3293,
+        "end_date": "2023-02-02",
+        "n_sessions_hmm": 3294,
+        "sup_cutoff_tau": 3291,
+        "sup_cutoff_date": "2023-01-31",
+        "n_train_sup": 2996
+      },
+      "scoring_window": {
+        "score_start_idx": 3294,
+        "score_end_idx": 3315,
+        "score_dates": "2023-02-03 to 2023-03-06",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9901949419179147,
+          0.009805058082085302
+        ],
+        [
+          0.015898926102591228,
+          0.9841010738974089
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9901949419179147,
+        0.9841010738974089
+      ],
+      "hmm_expected_dwell_times": [
+        101.98817708454843,
+        62.897329891798435
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6229508196721312,
+        0.3770491803278688
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6222728247173928,
+        0.3777271752826063
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 14,
+      "refit_origin_tau": 3314,
+      "refit_date": "2023-03-06",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3314,
+        "end_date": "2023-03-06",
+        "n_sessions_hmm": 3315,
+        "sup_cutoff_tau": 3312,
+        "sup_cutoff_date": "2023-03-02",
+        "n_train_sup": 3017
+      },
+      "scoring_window": {
+        "score_start_idx": 3315,
+        "score_end_idx": 3336,
+        "score_dates": "2023-03-07 to 2023-04-04",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9900393966846724,
+          0.00996060331532759
+        ],
+        [
+          0.01593186449039545,
+          0.9840681355096046
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9900393966846724,
+        0.9840681355096046
+      ],
+      "hmm_expected_dwell_times": [
+        100.39552508442758,
+        62.76729259170226
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6153846153846154,
+        0.38461538461538464
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6152965320640614,
+        0.38470346793593907
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 15,
+      "refit_origin_tau": 3335,
+      "refit_date": "2023-04-04",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3335,
+        "end_date": "2023-04-04",
+        "n_sessions_hmm": 3336,
+        "sup_cutoff_tau": 3333,
+        "sup_cutoff_date": "2023-03-31",
+        "n_train_sup": 3038
+      },
+      "scoring_window": {
+        "score_start_idx": 3336,
+        "score_end_idx": 3357,
+        "score_dates": "2023-04-05 to 2023-05-04",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9898003789220257,
+          0.010199621077974414
+        ],
+        [
+          0.015613011534518195,
+          0.9843869884654818
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9898003789220257,
+        0.9843869884654818
+      ],
+      "hmm_expected_dwell_times": [
+        98.04285790179584,
+        64.04914245974506
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6070143884892086,
+        0.39298561151079137
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6071015166108668,
+        0.39289848338913236
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 16,
+      "refit_origin_tau": 3356,
+      "refit_date": "2023-05-04",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3356,
+        "end_date": "2023-05-04",
+        "n_sessions_hmm": 3357,
+        "sup_cutoff_tau": 3354,
+        "sup_cutoff_date": "2023-05-02",
+        "n_train_sup": 3059
+      },
+      "scoring_window": {
+        "score_start_idx": 3357,
+        "score_end_idx": 3378,
+        "score_dates": "2023-05-05 to 2023-06-05",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9901598519090662,
+          0.009840148090933854
+        ],
+        [
+          0.016173452322394463,
+          0.9838265476776056
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9901598519090662,
+        0.9838265476776056
+      ],
+      "hmm_expected_dwell_times": [
+        101.62448682264721,
+        61.82971823618382
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6136431337503724,
+        0.3863568662496276
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6132751607553342,
+        0.3867248392446656
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 17,
+      "refit_origin_tau": 3377,
+      "refit_date": "2023-06-05",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3377,
+        "end_date": "2023-06-05",
+        "n_sessions_hmm": 3378,
+        "sup_cutoff_tau": 3375,
+        "sup_cutoff_date": "2023-06-01",
+        "n_train_sup": 3080
+      },
+      "scoring_window": {
+        "score_start_idx": 3378,
+        "score_end_idx": 3399,
+        "score_dates": "2023-06-06 to 2023-07-06",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9908879823225502,
+          0.009112017677449928
+        ],
+        [
+          0.016211228156600557,
+          0.9837887718433994
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9908879823225502,
+        0.9837887718433994
+      ],
+      "hmm_expected_dwell_times": [
+        109.74517778590034,
+        61.6856409853709
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6349911190053286,
+        0.3650088809946714
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6328373186332253,
+        0.36716268136677577
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 18,
+      "refit_origin_tau": 3398,
+      "refit_date": "2023-07-06",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3398,
+        "end_date": "2023-07-06",
+        "n_sessions_hmm": 3399,
+        "sup_cutoff_tau": 3396,
+        "sup_cutoff_date": "2023-07-03",
+        "n_train_sup": 3101
+      },
+      "scoring_window": {
+        "score_start_idx": 3399,
+        "score_end_idx": 3420,
+        "score_dates": "2023-07-07 to 2023-08-04",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9909801350625497,
+          0.009019864937450425
+        ],
+        [
+          0.016202400874348127,
+          0.9837975991256519
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9909801350625497,
+        0.9837975991256519
+      ],
+      "hmm_expected_dwell_times": [
+        110.86640508861909,
+        61.71924813829388
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6372462488967343,
+        0.3627537511032657
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6351534682938224,
+        0.3648465317061752
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 19,
+      "refit_origin_tau": 3419,
+      "refit_date": "2023-08-04",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3419,
+        "end_date": "2023-08-04",
+        "n_sessions_hmm": 3420,
+        "sup_cutoff_tau": 3417,
+        "sup_cutoff_date": "2023-08-02",
+        "n_train_sup": 3122
+      },
+      "scoring_window": {
+        "score_start_idx": 3420,
+        "score_end_idx": 3441,
+        "score_dates": "2023-08-07 to 2023-09-05",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9910015705463608,
+          0.008998429453639155
+        ],
+        [
+          0.016110074278742212,
+          0.9838899257212579
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9910015705463608,
+        0.9838899257212579
+      ],
+      "hmm_expected_dwell_times": [
+        111.13050395650751,
+        62.072960229583785
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6353801169590644,
+        0.3646198830409357
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6341918706773081,
+        0.3658081293226927
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 20,
+      "refit_origin_tau": 3440,
+      "refit_date": "2023-09-05",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3440,
+        "end_date": "2023-09-05",
+        "n_sessions_hmm": 3441,
+        "sup_cutoff_tau": 3438,
+        "sup_cutoff_date": "2023-08-31",
+        "n_train_sup": 3143
+      },
+      "scoring_window": {
+        "score_start_idx": 3441,
+        "score_end_idx": 3462,
+        "score_dates": "2023-09-06 to 2023-10-04",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9908940139189548,
+          0.009105986081045193
+        ],
+        [
+          0.01598774655875663,
+          0.9840122534412433
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9908940139189548,
+        0.9840122534412433
+      ],
+      "hmm_expected_dwell_times": [
+        109.81787047550817,
+        62.54790168989064
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6297587910491136,
+        0.37024120895088636
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6301772042654769,
+        0.36982279573452376
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 21,
+      "refit_origin_tau": 3461,
+      "refit_date": "2023-10-04",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3461,
+        "end_date": "2023-10-04",
+        "n_sessions_hmm": 3462,
+        "sup_cutoff_tau": 3459,
+        "sup_cutoff_date": "2023-10-02",
+        "n_train_sup": 3164
+      },
+      "scoring_window": {
+        "score_start_idx": 3462,
+        "score_end_idx": 3483,
+        "score_dates": "2023-10-05 to 2023-11-02",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9911778656846821,
+          0.008822134315317831
+        ],
+        [
+          0.0160625048457027,
+          0.9839374951542973
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9911778656846821,
+        0.9839374951542973
+      ],
+      "hmm_expected_dwell_times": [
+        113.351255405815,
+        62.256790557017986
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6389370306181398,
+        0.3610629693818602
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6384688374895843,
+        0.3615311625104175
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 22,
+      "refit_origin_tau": 3482,
+      "refit_date": "2023-11-02",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3482,
+        "end_date": "2023-11-02",
+        "n_sessions_hmm": 3483,
+        "sup_cutoff_tau": 3480,
+        "sup_cutoff_date": "2023-10-31",
+        "n_train_sup": 3185
+      },
+      "scoring_window": {
+        "score_start_idx": 3483,
+        "score_end_idx": 3504,
+        "score_dates": "2023-11-03 to 2023-12-04",
+        "n_scored": 21
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9913179178465735,
+          0.008682082153426442
+        ],
+        [
+          0.016168490274398928,
+          0.983831509725601
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9913179178465735,
+        0.983831509725601
+      ],
+      "hmm_expected_dwell_times": [
+        115.17974402089015,
+        61.848693540879694
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.6491530289979902,
+        0.3508469710020098
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.6455461924997264,
+        0.35445380750027006
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    },
+    {
+      "block": 23,
+      "refit_origin_tau": 3503,
+      "refit_date": "2023-12-04",
+      "train_window": {
+        "start_idx": 0,
+        "start_date": "2010-01-04",
+        "end_idx": 3503,
+        "end_date": "2023-12-04",
+        "n_sessions_hmm": 3504,
+        "sup_cutoff_tau": 3501,
+        "sup_cutoff_date": "2023-11-30",
+        "n_train_sup": 3206
+      },
+      "scoring_window": {
+        "score_start_idx": 3504,
+        "score_end_idx": 3522,
+        "score_dates": "2023-12-05 to 2023-12-29",
+        "n_scored": 18
+      },
+      "hmm_transition_matrix": [
+        [
+          0.9914289786951883,
+          0.008571021304811747
+        ],
+        [
+          0.016415437233568322,
+          0.9835845627664317
+        ]
+      ],
+      "hmm_diagonal_probabilities": [
+        0.9914289786951883,
+        0.9835845627664317
+      ],
+      "hmm_expected_dwell_times": [
+        116.67221028124266,
+        60.91826771175347
+      ],
+      "hmm_state_occupancies_train_argmax": [
+        0.653824200913242,
+        0.346175799086758
+      ],
+      "hmm_state_occupancies_train_mean": [
+        0.651274337905599,
+        0.3487256620944007
+      ],
+      "dwell_time_constraint_pass": true,
+      "occupancy_constraint_pass": true,
+      "all_constraints_pass": true
+    }
+  ]
+}

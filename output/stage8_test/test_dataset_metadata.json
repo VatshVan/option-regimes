@@ -1,0 +1,29 @@
+{
+  "dataset_name": "spx_features_test_2022_2023",
+  "file_path": "output/stage8_test/spx_features_test_2022_2023.csv",
+  "sha256_checksum": "8A4BF13AF38F5FA8D4681B746B2D162D5A02F7711A04564F704CA2CDE2BC5C0E",
+  "n_total_sessions": 501,
+  "start_date": "2022-01-03",
+  "end_date": "2023-12-29",
+  "n_feature_complete_all5": 501,
+  "n_usable_supervised_pairs": 501,
+  "n_forward_filled_q_sessions": 5,
+  "forward_filled_q_dates": [
+    "2022-05-11",
+    "2022-06-17",
+    "2022-06-24",
+    "2022-12-16",
+    "2023-01-03"
+  ],
+  "n_breach_flagged_origins": 1,
+  "breach_flagged_dates": [
+    "2022-01-03"
+  ],
+  "label_definition": "Proposal A: y_t = ln(S_{t+2} / S_{t+1})",
+  "label_maturity_closes": {
+    "2024-01-02": 4742.830078125,
+    "2024-01-03": 4704.81005859375
+  },
+  "data_access_scope_disclosure": "Cash closes (^GSPC) and risk-free rates (^IRX) were retrieved through 2024-01-03 strictly to mature Proposal A return targets for the final test origins (2023-12-28 and 2023-12-29). Additional closes for 2024-01-04 through 2024-01-09 were initially fetched during data exploration and have been explicitly truncated. spx_daily_closes_2009_2024.csv ends strictly at 2024-01-03. Zero 2024 forecast origins exist, zero 2024 option files were accessed, and no post-maturity closes enter any feature or label.",
+  "test_partition_status_disclosure": "The held-out test partition is historically compromised: S&P 500 cash closes for 2022-01-03 (4796.56) and 2022-01-04 (4793.54), and the derived return ln(4793.54/4796.56) = -0.000630, were accessed and committed in Git history commit cee01a1. The raw 2022-2023 monthly option bundles were processed for the first time during Gate D. Origin 2022-01-03 is explicitly flagged and evaluated both included and excluded to ensure transparent reporting."
+}
