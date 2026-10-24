@@ -3,7 +3,7 @@
 **Course:** IE 612 (Introduction to Financial Engineering)  
 **Author:** Antigravity (Advanced Agentic Coding Pair Programmer)  
 **Date:** 24 October 2026  
-**Document Status:** Complete Reproduction & Demonstration Guide (Stages 1–9)  
+**Document Status:** Project reproduction guide; course submission requirements remain to be confirmed
 **Governing Documents:**
 - [`research_protocol.md`](file:///D:/IE612_Project/research_protocol.md)
 - [`gate_d_final_test_report.md`](file:///D:/IE612_Project/gate_d_final_test_report.md)
@@ -13,10 +13,10 @@
 
 ## 1. Executive Summary & Verification Guarantee
 
-This guide provides end-to-end instructions for reproducing and independently auditing every stage of the IE 612 research project:
-1. **Zero Data Redistribution Risk:** Raw OptionsDX option bundles in `Data/` are strictly excluded from version control via `.gitignore`. All scripts operate on local relative paths.
-2. **Deterministic Checksum Guarantees:** All intermediate feature datasets, date-level model predictions, refit diagnostics, and statistical summaries are pinned by verified SHA-256 hashes.
-3. **Prequential Walk-Forward Replication:** The entire expanding-window walk-forward pipeline (24 blocks across 2022–2023) can be re-executed deterministically from saved feature CSVs in under 2 minutes.
+This guide describes read-only artifact verification and the commands used to rerun selected audit/model stages. Rerun commands can read local raw data and may overwrite generated outputs; verify hashes first and use a clean copy if preserving the archived run matters.
+1. **Local Vendor Data:** Raw OptionsDX bundles are intended to remain local and are excluded by the repository `.gitignore`; verify repository tracking status before any distribution. Reproduction requires lawful local access to those vendor files.
+2. **Artifact Integrity:** SHA-256 values are recorded for selected datasets, predictions, diagnostics, and summaries. A matching hash verifies byte identity, not correctness of the method.
+3. **Walk-Forward Re-Execution:** The Stage 8 script re-estimates the 24-block expanding walk-forward run from saved feature CSVs. Runtime and bit-for-bit determinism depend on the local software environment and are not guaranteed here.
 
 ---
 
@@ -30,9 +30,9 @@ This guide provides end-to-end instructions for reproducing and independently au
 ### 2.2 Python Dependencies
 The project relies exclusively on standard scientific computing libraries. Install dependencies via pip:
 ```powershell
-pip install numpy scipy pandas yfinance
+pip install numpy scipy pandas yfinance torch
 ```
-*(No specialized GPU accelerators or proprietary solvers are required).*
+The model code imports PyTorch; CPU use is sufficient. Exact package versions and environment locking are not recorded, so results should be checked against the saved artifacts and hashes.
 
 ---
 
@@ -59,7 +59,7 @@ IE612_Project/
 │   ├── features/
 │   │   ├── svix.py                           # Martin (2017) SVIX integration engine
 │   │   ├── moments.py                        # Risk-neutral skewness and kurtosis computation
-│   │   └── physical_features.py              # Realized volatility, Parkinson, and return lag calculation
+│   │   └── historical_state.py               # Historical return, realized volatility, downside semivariance, drawdown
 │   └── models/
 │       ├── hmm_filter.py                     # Causal forward-filtered HMM implementation
 │       ├── density_models.py                 # Student-t location-scale regression architecture
@@ -139,7 +139,7 @@ Get-FileHash output/stage8_test/hmm_refit_diagnostics_test.json -Algorithm SHA25
 ## 5. Step-by-Step Reproduction Walkthrough
 
 ### Step 1: Verify Stage 8 Raw Data Coverage (Test Partition Audit)
-To independently verify the file integrity, contract schema, 16:00 ET timestamps, and exchange session reconciliation of the 2022–2023 raw OptionsDX bundles:
+This command reads all local 2022–2023 raw OptionsDX bundles and downloads the ^GSPC calendar through `yfinance`; it requires lawful local data access and network availability. It rewrites the audit JSON. To preserve the committed audit, first copy the repository or use the saved JSON for read-only review.
 ```powershell
 python scratch/audit_2022_2023_test_data.py
 ```
@@ -147,14 +147,14 @@ python scratch/audit_2022_2023_test_data.py
 - 24 monthly option bundles audited.
 - Exactly 4,100,693 contract records scanned.
 - 100% schema match (33/33 columns).
-- Uniform 16:00:00 vendor timestamps verified on all dates.
+- Uniform 16:00 vendor read-time strings verified on all observed dates; this does not prove exchange-level synchronization.
 - Exactly 5 single-session gaps detected and reconciled against exchange calendar.
 - Audit report written to `output/stage8_test/raw_data_audit_2022_2023.json`.
 
 ---
 
 ### Step 2: Reproduce Stage 7 Validation Models & Sensitivity Analyses
-To re-estimate models $B0$–$B4$ and $R1$ across 2010–2019 Development pairs, run the 21-session expanding walk-forward validation across 2020–2021, and execute the mid-2012 sensitivity benchmark:
+This command re-estimates models $B0$–$B4$ and $R1$ across the saved development/validation datasets, including the mid-2012 sensitivity benchmark. It rewrites Stage 7 outputs; use a copy if you need to preserve the archived run.
 ```powershell
 python scratch/run_stage7_experiments.py
 ```
@@ -169,7 +169,7 @@ python scratch/run_stage7_experiments.py
 ---
 
 ### Step 3: Reproduce Stage 8 Gate D Final Test Evaluation
-To run the frozen walk-forward refit pipeline across the 2022–2023 test partition:
+This command re-estimates the frozen-configuration walk-forward pipeline from saved operational development, validation, and test feature datasets. It does not need to parse raw 2022–2023 option bundles, but it rewrites Stage 8 predictions and metrics; use a copy if preserving the committed results.
 ```powershell
 python scratch/run_stage8_test_evaluation.py
 ```
@@ -178,12 +178,12 @@ python scratch/run_stage8_test_evaluation.py
 - Evaluates both the primary Jan 3-origin-score-excluded trajectory ($N=500$) and the strictly isolated trajectory ($N=500$).
 - Computes out-of-sample NLL, CRPS, empirical central interval coverage (50%, 80%, 95%), quantile pinball losses (10th, 50th, 90th), and PIT Kolmogorov-Smirnov tests.
 - Executes paired Diebold–Mariano tests with Newey-West lag truncation ($q=5$).
-- Executes stationary block bootstrap (10,000 resamples, average block length 10 sessions).
+- Executes stationary block bootstrap (2,000 resamples, mean block length 5 sessions).
 - Confirms:
   - $\bar{d} = +0.005417$ nats/session
   - $\text{DM} = 1.4521, \ p_{\text{one-sided}} = 0.0732$
   - Bootstrap 95% CI: $[-0.001979, +0.013837]$
-  - $B4$ CRPS $= 0.005391$, $R1$ CRPS $= 0.005398$
+  - $B4$ CRPS $= 0.006616$, $R1$ CRPS $= 0.006609$
 - Saves all artifacts to `output/stage8_test/`.
 
 ---
@@ -232,6 +232,6 @@ The following administrative items are formally classified as **Unresolved Admin
 
 For academic assessment, the quantitative findings of this study are summarized as follows:
 1. **Primary Null Result:** The regime-augmented challenger ($R1$) does not demonstrate a statistically significant out-of-sample log-likelihood gain over the matched non-regime baseline ($B4$) ($p = 0.0732 > 0.05$; bootstrap 95% CI spans zero).
-2. **Metric Divergence:** The continuous evaluation metric (CRPS) slightly favors baseline $B4$.
+2. **Secondary Metric:** Mean CRPS is numerically slightly lower for $R1$ (0.006609) than for $B4$ (0.006616); this does not establish an inferential advantage.
 3. **Parsimony Ruling:** In accordance with pre-registered econometric decision criteria, **the non-regime baseline $B4$ is favored on grounds of parsimony**.
 4. **Economic Integrity:** No trading, investment, or live-portfolio claims are made.

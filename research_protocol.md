@@ -8,25 +8,27 @@
 
 ---
 
+> **Execution addendum (24 October 2026):** This file preserves the original Stage 1 protocol record. User Decision UD-1 later adopted Proposal A, $y_t=\ln(S_{t+2}/S_{t+1})$, as the operational target; the original next-session target and unresolved-cutoff wording below are superseded for Stages 7–9. Gate D was completed in Stage 8 after the 2022–2023 option bundles were audited and used. The test partition has historical cash-close exposure recorded in commit `cee01a1` and must not be described as untouched. **Where Sections 5–7 below conflict with the executed code and Stage 5/8 specifications, the executed implementation and final reports govern:** the evaluated density models are Gaussian B0, Student-t B1 (RV20 only), Student-t B2 (Q), B3 (X), B4 (Q+X), and R1 (Q+X plus two filtered K=2 HMM probabilities); B4/R1 use the same Student-t location-scale regression form. Their primary held-out results are B4 NLL -3.055344 and CRPS 0.006616, R1 NLL -3.060762 and CRPS 0.006609 (500 scored origins). The NLL advantage estimate is 0.005417 nats/session, one-sided HAC DM p=0.0732, and the 2,000-replication stationary-bootstrap 95% interval is [-0.001979, 0.013837] (mean block length 5). The result is inconclusive; R1 is numerically better on NLL and CRPS, but incremental regime value is not established. Standard PIT KS p-values are 0.04997 (B4) and 0.03711 (R1). No portfolio result is claimed. Current results and limitations are in the Gate D and final research reports.
+
 ## 1. Research Question, Estimand, Hypotheses, and Decision Rules
 
 ### 1.1 Primary Research Question
-At trading date $t$, does conditioning on causally filtered, persistent latent market regimes ($\pi_t$) improve the out-of-sample forecast of the next trading day's physical return distribution, relative to a strong non-regime baseline that receives the identical option-implied risk-neutral features ($Q_t$) and historical market state ($X_t$)?
+At trading date $t$, does conditioning on causally filtered, persistent latent market regimes ($\pi_t$) improve the out-of-sample forecast of the Proposal A physical return distribution, relative to a strong non-regime baseline that receives the identical option-implied risk-neutral features ($Q_t$) and historical market state ($X_t$)?
 
-$$\text{Forecast Comparison: } \quad p(r_{t+1} \mid Q_t, X_t, \pi_t) \quad \text{versus} \quad p(r_{t+1} \mid Q_t, X_t)$$
+$$\text{Forecast Comparison: } \quad p(y_t \mid Q_t, X_t, \pi_t) \quad \text{versus} \quad p(y_t \mid Q_t, X_t), \qquad y_t=\ln(S_{t+2}/S_{t+1})$$
 
 where:
 * $Q_t$ denotes summary features extracted from the cross-section of S&P 500 (SPX) index option prices under the risk-neutral measure ($\mathbb{Q}$).
 * $X_t$ denotes observable historical market state variables available at or before the forecast cutoff.
 * $\pi_t = \big[P(z_t=1 \mid \mathcal{F}_t), \dots, P(z_t=K \mid \mathcal{F}_t)\big]^\top$ is the vector of filtered posterior regime probabilities inferred causally from an in-sample Hidden Markov Model (HMM) using information $\mathcal{F}_t$.
-* $r_{t+1} = \log(S_{t+1} / S_t)$ is the physical close-to-close log return of the underlying S&P 500 index over session $t+1$.
+* The original Stage 1 target was $r_{t+1}=\log(S_{t+1}/S_t)$. It was superseded for operational modeling by Proposal A, $y_t=\log(S_{t+2}/S_{t+1})$, adopted before Stage 7 and used in Stages 7–8.
 
 ### 1.2 Formal Estimand & Primary Metric
-The primary target of estimation is the conditional physical probability density function $\widehat{p}_{t+1}(r) \equiv p(r_{t+1} \mid \mathcal{I}_t)$.
+The operational target of estimation is the conditional physical probability density function $\widehat{p}_{t}(y) \equiv p(y_t \mid \mathcal{I}_t)$ under Proposal A. The earlier Stage 1 next-session target is retained only as historical protocol context.
 
-The primary evaluation criterion is the **mean out-of-sample Negative Log-Likelihood (NLL)** (log predictive loss) evaluated on realized next-day physical returns across the held-out test evaluation window $\mathcal{T}_{\text{test}}$:
+The primary evaluation criterion is the **mean out-of-sample Negative Log-Likelihood (NLL)** (log predictive loss) evaluated on realized Proposal A physical returns across the held-out test evaluation window $\mathcal{T}_{\text{test}}$:
 
-$$\mathcal{L}(M) = -\frac{1}{|\mathcal{T}_{\text{test}}|} \sum_{t \in \mathcal{T}_{\text{test}}} \log \widehat{p}^{(M)}_{t+1}(r_{t+1})$$
+$$\mathcal{L}(M) = -\frac{1}{|\mathcal{T}_{\text{test}}|} \sum_{t \in \mathcal{T}_{\text{test}}} \log \widehat{p}^{(M)}_{t}(y_t), \qquad y_t=\ln(S_{t+2}/S_{t+1})$$
 
 Lower loss represents superior predictive density performance.
 
@@ -57,15 +59,15 @@ A null result is treated as a fully valid, reportable scientific finding. The pr
 
 ### 2.1 Forecast Origin and Cutoff Time
 * **Observation Frequency:** Daily, End-of-Day (EOD).
-* **Forecast Origin & Cutoff Status:** Established at the nominal trading close on date $t$. The precise information cutoff is explicitly treated as **UNRESOLVED** due to the structural risk of Cboe option closes at 16:15 ET post-dating the 16:00 ET cash equity close $S_t$. Any operational use of option features in predictive models is **strictly gated** until quote timing is empirically verified in Gate B or a defensible alternative cutoff is formally pre-specified.
+* **Forecast Origin & Cutoff Status:** The Stage 1 nominal cutoff was unresolved because vendor timestamp strings do not prove synchronization with the cash close. Before Stage 7, User Decision UD-1 adopted Proposal A as the operational alternative: date-$t$ features forecast the return from $S_{t+1}$ to $S_{t+2}$. This avoids overlap with the possible post-cash-close option interval; it does not establish that vendor timestamps are exchange-verified.
 * **Information Set $\mathcal{F}_t$:** Contains all underlying prices, trades, macro series, and option quotes recorded up to the declared session cutoff at date $t$. Absolutely no information timestamped after date $t$'s market close is permitted in feature construction or model conditioning.
 
 ### 2.2 Target Return Definition
-* **Primary Target:** Close-to-close log return of the S&P 500 index:
-  $$r_{t+1} = \log\left(\frac{S_{t+1}}{S_t}\right)$$
-  where $S_t$ is the closing price of the S&P 500 index (`^GSPC`) on trading date $t$, and $S_{t+1}$ is the closing price on the subsequent trading date $t+1$.
-* **Horizon:** Strictly 1 trading session (non-overlapping). This avoids overlapping-label autocorrelation, purge/embargo requirements, and rolling-label dependence artifacts in the primary study.
-* **Total Return vs. Price Return:** The underlying index options are written on the price index ($S_t$), which defines the contract boundary and forward levels. Physical portfolio evaluation (secondary) may track total return (`^SP500TR`) to incorporate dividend reinvestment, but $r_{t+1}$ for density forecasting is defined uniformly on the price series matching the option underlying.
+* **Operational Primary Target (Proposal A):** Close-to-close log return of the S&P 500 index:
+  $$y_t = \log\left(\frac{S_{t+2}}{S_{t+1}}\right)$$
+  where $S_{t+1}$ and $S_{t+2}$ are the next two scheduled trading-session closes after feature origin $t$.
+* **Horizon:** One trading-session return whose interval begins at the close of $t+1$ and ends at the close of $t+2$. The initial Stage 1 target $r_{t+1}=\log(S_{t+1}/S_t)$ is superseded for operational modeling.
+* **Total Return vs. Price Return:** The underlying index options are written on the price index ($S_t$), which defines the contract boundary and forward levels. Physical portfolio evaluation (secondary) may track total return (`^SP500TR`) to incorporate dividend reinvestment, but Proposal A target $y_t$ for density forecasting is defined on the price series matching the option underlying.
 
 ### 2.3 Trading Calendar and Holiday Alignment
 * **Calendar Specification:** The official trading calendar is governed by the Cboe Index Options and NYSE calendars (via `pandas_market_calendars`).
@@ -82,7 +84,7 @@ A null result is treated as a fully valid, reportable scientific finding. The pr
    * *Frozen Protocol Rule:* **Do not rely directly on reported cash index levels (`UNDERLYING_LAST`) for strike moneyness or pricing parity.** Instead, infer the synchronous synthetic forward price $F_{t,\tau}$ directly from at-the-money (ATM) call and put quote midpoints at each maturity:
      $$F_{t,\tau} = K^* + e^{r \tau} \big(C(K^*, \tau) - P(K^*, \tau)\big)$$
      where $K^*$ is the liquid strike minimizing $|C(K, \tau) - P(K, \tau)|$.
-   * *Crucial Timing Clarification (Strict Cutoff Gate):* Inverting the synthetic forward $F_{t,\tau}$ via at-the-money put-call parity guarantees internal moneyness consistency across strikes within the option snapshot. However, **it does not by itself prove synchronization with the 16:00:00 ET cash equity close ($S_t$) or eliminate potential 15-minute look-ahead risk** if the options snapshot reflects 16:15:00 ET Cboe market closes while the physical return target denominator $S_t$ was frozen at 16:00:00 ET. Therefore, the forecast cutoff is explicitly classified as **UNRESOLVED**, and any operational use of option features in predictive models is strictly gated until quote timing and synchronization are empirically verified in Gate B or an alternative cutoff is formally approved.
+   * *Historical cutoff clarification:* Put-call parity establishes internal moneyness consistency but does not prove exchange-level synchronization with the cash close. Before Stage 7, User Decision UD-1 adopted Proposal A as the operational alternative: date-$t$ option features forecast $y_t=\ln(S_{t+2}/S_{t+1})$, whose return interval begins after the date-$t$ option snapshot. The vendor `16:00` string remains insufficient evidence of actual quote synchronization; the operational target addresses the identified overlap risk without claiming timestamp-level verification.
 
 2. **AM Settlement (`SPX`) vs. PM Settlement (`SPXW`) Ambiguity:**
    * *The Problem:* Standard monthly SPX options stop trading on Thursday afternoon and settle against the Friday morning Special Opening Quotation (`SET`), whereas weekly/end-of-month options (`SPXW`) trade until Friday 16:00 ET and settle against the 16:00 ET closing price. Raw OptionsDX files do not contain contract root identifiers (`SPX` vs. `SPXW`).
@@ -351,41 +353,39 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
 * **Cadence Default:** **Monthly (every 21 trading sessions)**.
 * **Supervised Training vs. HMM Information Sets at Refit Origin $\tau$:**
   > [!IMPORTANT]
-  > At refit origin $\tau$ (close of trading day $\tau$), the next-day target return $r_{\tau + 1} = \ln(S_{\tau + 1} / S_{\tau})$ has **not yet occurred**. Including origin $\tau$ in supervised model training would leak unobserved future return $r_{\tau + 1}$. The training partitions must strictly distinguish supervised label availability from unsupervised emission availability:
-  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau}$):** Restricted strictly to origins whose target label $r_{s+1}$ has already been fully observed by session close $\tau$:
-  >    $$\mathcal{T}_{\text{sup},\tau} \equiv \{s : 1 \le s \le \tau - 1\}$$
-  >    For every origin $s \in \mathcal{T}_{\text{sup},\tau}$, the realized return $r_{s+1}$ was observed on or before session close $\tau$ (since $s \le \tau - 1 \implies s+1 \le \tau$).
-  > 2. **HMM Estimation & Feature Scaler Set ($\mathcal{T}_{\text{HMM},\tau}$):**
+  > For Proposal A, $y_s=\ln(S_{s+2}/S_{s+1})$. At refit origin $\tau$ (close of session $\tau$), the latest matured supervised origin is $s=\tau-2$, because $y_{\tau-2}=\ln(S_\tau/S_{\tau-1})$ has just been observed. Targets for origins $\tau-1$ and $\tau$ have not matured. The training partitions distinguish label availability from contemporaneous HMM emissions:
+  > 1. **Supervised Model Training Set ($\mathcal{T}_{\text{sup},\tau}$):**
+  >    $$\mathcal{T}_{\text{sup},\tau} \equiv \{s : 1 \le s \le \tau - 2,\ y_s\text{ observed and complete-case}\}$$
+  >    The model feature scalers are fit on these supervised training origins only.
+  > 2. **HMM Emission Set ($\mathcal{T}_{\text{HMM},\tau}$):**
   >    $$\mathcal{T}_{\text{HMM},\tau} \equiv \{s : 1 \le s \le \tau\}$$
-  >    Because emission vector $\mathbf{y}_s = [\widetilde{r}_s, \widetilde{\text{RV}}_{20d,s}]^\top$ and feature inputs $[Q_s, X_s]$ are contemporaneous to date $s$, the realization at $s = \tau$ is fully observed at session close $\tau$ (since $r_{\tau} = \ln(S_{\tau} / S_{\tau - 1})$ is already realized).
+  >    The standardized bivariate emission $[r_{1d,s}, RV_{20d,s}]^\top$ is contemporaneously observable through session close $\tau$; the HMM may therefore be estimated and filtered through $\tau$ separately from supervised label fitting.
 * **Execution Rules per Refit Date $\tau$:**
-  1. Fit feature scalers (medians, IQRs) strictly on $\mathcal{T}_{\text{HMM},\tau} = \{s \le \tau\}$.
+  1. Fit predictive-model feature scalers (medians, IQRs) strictly on $\mathcal{T}_{\text{sup},\tau}$; fit HMM emission standardization using historical emissions through $\tau$.
   2. Estimate HMM transition and emission parameters $\boldsymbol{\theta}_{\text{HMM}}$ strictly on $\mathcal{T}_{\text{HMM},\tau} = \{s \le \tau\}$.
-  3. Re-fit predictive density models $B0, B1, B2, B3, B4,$ and $R1$ **strictly on supervised pairs $\{(\mathbf{z}_s, r_{s+1})\}_{s=1}^{\tau - 1}$** ($\mathcal{T}_{\text{sup},\tau}$), with features scaled by statistics frozen at $\tau$.
-  4. For the subsequent 21 sessions $t \in [\tau, \tau + 20]$:
-     - For origin $t = \tau$: scale features $[Q_\tau, X_\tau]$, compute forward-filtered probability $\pi_\tau$, and generate forecast $\widehat{p}_{\tau+1}(r)$. Observe realized return $r_{\tau+1}$ after session $\tau+1$ close and record log-likelihood.
-     - Advance sequentially through $t = \tau + 1, \dots, \tau + 20$: apply frozen scalers from date $\tau$ to features $Q_t, X_t$; compute causal forward filtered probabilities $\pi_t$ using frozen HMM parameters; generate 1-day density forecasts $\widehat{p}_{t+1}(r)$ using frozen predictive models; observe realized return $r_{t+1}$ after session $t+1$ close and record out-of-sample log-likelihood.
+  3. Re-fit predictive density models $B0$–$B4$ and $R1$ on supervised pairs $\{(\mathbf{z}_s,y_s)\}_{s\in\mathcal{T}_{\text{sup},\tau}}$.
+  4. For the subsequent 21 origins $t=\tau+1,\dots,\tau+21$, apply frozen model scalers, update causal forward-filtered probabilities using emissions observable through each origin $t$, and generate $\widehat{p}_t(y)$. Score the realized $y_t$ only after close $t+2$; do not use that label before it matures.
   5. Store forecast distributions, loss scores, and computation logs permanently.
 
 ### 6.3 Missing Sessions and Missing Feature Handling
-* **Trading Day Alignment:** Target $r_{t+1} = \ln(S_{t+1}/S_t)$ is evaluated across consecutive active exchange trading sessions.
+* **Trading Day Alignment:** Proposal A target $y_t = \ln(S_{t+2}/S_{t+1})$ uses the next two active exchange closes after origin $t$.
 * **Isolated Option Gap ($\le 1$ Trading Day):** If the option chain at date $t$ is missing but the cash market traded, option features are causally forward-filled ($Q_t \leftarrow Q_{t-1}$).
 * **Multi-Session Gap ($> 1$ Consecutive Trading Days):** If option chain data is unavailable for $>1$ consecutive session, forecast origin $t$ is omitted from out-of-sample loss aggregation and flagged `ERR_CONSECUTIVE_OPTION_GAP`. No backward-filling or interpolation using future data is permitted.
-* **Missing Cash Close:** If $S_t$ or $S_{t+1}$ is missing, the session is excluded from scoring and flagged `ERR_MISSING_CASH_CLOSE`.
+* **Missing Cash Close:** If $S_{t+1}$ or $S_{t+2}$ is missing, the target origin is excluded from scoring and flagged `ERR_MISSING_CASH_CLOSE`.
 
 ### 6.4 Performance Metrics
 
 #### Primary Metric
 * **Out-of-Sample Negative Log-Likelihood (NLL):**
-  $$\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t=1}^{N_{\text{test}}} \ln \widehat{p}_{t+1}^{(M)}(r_{t+1})$$
-  Paired loss differential: $d_t = \ln \widehat{p}_{t+1}^{(R1)}(r_{t+1}) - \ln \widehat{p}_{t+1}^{(B4)}(r_{t+1})$. A positive mean differential ($\bar{d} > 0$) signifies that $R1$ assigns higher likelihood (lower log loss) to realized physical returns.
+  $$\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t\in\mathcal{T}_{\text{test}}} \ln \widehat{p}_{t}^{(M)}(y_t)$$
+  Paired Proposal A log-score differential: $d_t = \ln \widehat{p}_{t}^{(R1)}(y_t) - \ln \widehat{p}_{t}^{(B4)}(y_t)$. A positive mean differential ($\bar{d} > 0$) signifies that $R1$ assigns higher likelihood (lower log loss) to realized physical returns.
 
 #### Secondary Forecast Metrics
 1. **Continuous Ranked Probability Score (CRPS):**
-   $$\text{CRPS}(\widehat{F}_{t+1}, r_{t+1}) = \int_{-\infty}^\infty \Big(\widehat{F}_{t+1}(u) - \mathbb{I}(r_{t+1} \le u)\Big)^2 du$$
+   $$\text{CRPS}(\widehat{F}_{t}, y_t) = \int_{-\infty}^\infty \Big(\widehat{F}_{t}(u) - \mathbb{I}(y_t \le u)\Big)^2 du$$
    Evaluates distributional calibration and sharpness with lower sensitivity to extreme outlier points than NLL.
 2. **Probability Integral Transform (PIT) Diagnostics:**
-   $$u_t = \widehat{F}_{t+1}(r_{t+1}) = \int_{-\infty}^{r_{t+1}} \widehat{p}_{t+1}(s) \, ds$$
+   $$u_t = \widehat{F}_{t}(y_t) = \int_{-\infty}^{y_t} \widehat{p}_{t}(s) \, ds$$
    Under perfect calibration, $u_t \sim \text{Uniform}[0, 1]$. Evaluated via:
    * Visual inspection of 10-bin PIT histogram.
    * Kolmogorov–Smirnov test and Berkowitz (2001) likelihood ratio test of normality on $z_t = \Phi^{-1}(u_t)$.
@@ -495,7 +495,7 @@ The project acknowledges the established literature and explicitly circumscribes
    * [Bali et al. (2023)](file:///D:/IE612_Project/Papers/hhad017.pdf) established machine-learning methodologies for option predictability.
 2. **Provisional Novelty Boundary:**
    The project's sole candidate contribution is:
-   > Testing whether conditioning on **causally filtered, persistent latent market regimes ($\pi_t$)** provides incremental out-of-sample predictive density accuracy when mapping risk-neutral option moments and historical market state into the physical distribution of next-day returns, evaluated against a matched non-regime baseline under strict time-ordered evaluation.
+   > Testing whether conditioning on **causally filtered, persistent latent market regimes ($\pi_t$)** provides incremental out-of-sample predictive density accuracy when mapping risk-neutral option moments and historical market state into the Proposal A physical return distribution $y_t=\ln(S_{t+2}/S_{t+1})$, evaluated against a matched non-regime baseline under strict time-ordered evaluation.
 3. **No Exaggerated Priority Claims:** The project makes no claim to have solved the general physical-to-risk-neutral change of measure, discovered a new arbitrage-free pricing model, or developed an investable trading system.
 
 ---
