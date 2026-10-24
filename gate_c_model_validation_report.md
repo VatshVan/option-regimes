@@ -8,6 +8,9 @@
 
 ---
 
+> [!NOTE]
+> **Historical Record Context:** This report documents the Gate C model validation as of Stage 7 (24 October 2026). Subsequent final held-out test evaluation (Stage 8 / Gate D) has since been completed. Statements in this report describing unopened test bundles or pending Gate D evaluation reflect the project status as of Gate C closure.
+
 ## 1. Executive Summary & Gate C Determination
 
 ### 1.1 Gate C Status: **QUALIFIED PASS / PASSED WITH VALIDATION CAVEATS**
@@ -278,12 +281,12 @@ As documented in the Gate B audit, the early development sample (2010–2011) wa
 | Gate A | Local Data Feasibility Gate         | QUALIFIED PASS                           | Stage 3 pilot verification    |
 | Gate B | Calendar & Feature Construction Gate| QUALIFIED PASS (UD)                      | Resolved by UD-1 to UD-5      |
 | Gate C | Baseline & Density Stability Gate   | **QUALIFIED PASS / PASSED WITH CAVEATS** | Stability verified; caveats doc|
-| Gate D | Final Held-Out Test Evaluation Gate | **PENDING / BLOCKED**                    | Held-Out 2022–2023 partition  |
+| Gate D | Final Held-Out Test Evaluation Gate | **COMPLETED (Stage 8)**                  | Evaluated at Gate D; inconclusive |
 +-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ### 7.2 Strict Protection of Held-Out Test Partition
-1. **Raw Option Bundles Unopened:** The 24 raw OptionsDX monthly bundles for 2022–2023 in `Data/SPX Options Chain/` remain **strictly unopened and uninspected**.
+1. **Raw Option Bundles Unopened (as of Gate C):** The 24 raw OptionsDX monthly bundles for 2022–2023 in `Data/SPX Options Chain/` remained strictly unopened and uninspected through Gate C closure (subsequently audited and evaluated in Stage 8 Gate D).
 2. **Pre-Registered Test Exclusion:** The Jan 3 and Jan 4, 2022 cash closes and 2021-12-31 validation return retained in Git history commit `cee01a1` are formally pre-registered for exclusion from any eventual test scoring.
 3. **Stage 6 Candidate CSV Hash Preservation:**
    - `spx_features_development_2010_2019.csv`: `138FA68AF7F8F21DA257F5D41332E583E73F32E358C6B2242A5D783DD5B2978E` (**VERIFIED INVARIANT**)

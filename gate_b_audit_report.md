@@ -7,7 +7,8 @@
 
 ---
 
-## 1. Executive Summary & Gate B Determination
+> [!NOTE]
+> **Historical Record Context:** This document records the Gate B audit and user-authorized resolutions as of 22 October 2026. Subsequent modeling (Stage 7 / Gate C) and final held-out test evaluation (Stage 8 / Gate D) have since been completed. Statements in this historical document describing unopened test bundles, barred test evaluation, or pending Gate D reflect the project status as of Gate B.
 
 ### 1.1 Gate B Determination: **BLOCKED / QUALIFIED (STAGE 7 MODEL FITTING NOT AUTHORIZED)**
 In accordance with project governance, empirical audit findings, anti-leakage disciplines, and course protocol:

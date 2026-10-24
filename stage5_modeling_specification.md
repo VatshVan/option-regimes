@@ -19,7 +19,7 @@ $$\text{Predictive Comparison: } \quad p(r_{t+1} \mid Q_t, X_t, \pi_t) \quad \te
 Stage 5 is **strictly a specification and protocol finalization stage**. In compliance with project governance and anti-leakage disciplines:
 1. **No Model Training or Fitting:** No baseline, MDN, or HMM parameters are estimated or fitted during this stage.
 2. **No Walk-Forward Execution:** No rolling out-of-sample predictions are generated.
-3. **No Test Partition Processing (Stage 5 Scope):** Raw 2022–2023 option bundles remained uninspected and unparsed during Stage 5. (Note: As disclosed in Stage 6, January 3 and 4, 2022 cash closes were subsequently retrieved in commit `cee01a1` and remain in Git history; raw option bundles remain unopened).
+3. **No Test Partition Processing (Stage 5 Scope):** Raw 2022–2023 option bundles remained uninspected and unparsed during Stage 5. (Note: As disclosed in Stage 6, January 3 and 4, 2022 cash closes were subsequently retrieved in commit `cee01a1` and remain in Git history; raw option bundles remained unopened until authorized Gate D evaluation at Stage 8).
 4. **Preservation of Limitations:** The qualified status of Gate A, the discrete finite-grid nature of option-moment quadrature (without tail extrapolation), the completed 2010–2021 session continuity audit alongside the unaudited 2022–2023 test period continuity, the audited early-sample strike depth deficit (2010–2012), and the illustrative status of demonstration interest rates are documented without alteration.
 
 ---
@@ -250,7 +250,7 @@ The sample spans 14 calendar years (2010–2023, 168 monthly files) partitioned 
 ## 7. Statistical Evaluation, Inference & Multiple Testing Protocol
 
 ### 7.1 Primary Metric: Out-of-Sample Negative Log-Likelihood (NLL)
-Evaluated on the held-out test partition $\mathcal{T}_{\text{test}}$ (2022–2023; raw option bundles unopened; cash close breach recorded in commit cee01a1):
+Evaluated on the held-out test partition $\mathcal{T}_{\text{test}}$ (2022–2023; historically unopened during specification; evaluated at Gate D in Stage 8 with Jan 3 origin excluded from primary scoring; cash close breach recorded in commit cee01a1):
 $$\mathcal{L}(M) = -\frac{1}{N_{\text{test}}} \sum_{t \in \mathcal{T}_{\text{test}}} \ln \widehat{p}_{t+1}^{(M)}(r_{t+1})$$
 
 ### 7.2 Paired Loss Differential and Diebold-Mariano Test
@@ -335,23 +335,23 @@ Before any model training, HMM estimation, or full-sample evaluation may begin, 
   - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download
     and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history).
     The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31
-    and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remain unopened.
+    and 2021-12-31 are set strictly to NaN to guarantee partition purity. Raw option bundles remained unopened through Stage 7.
   - BLOCKERS: 2022–2023 test period daily continuity remains unaudited to avoid opening raw test bundles;
     proposed deferral to Gate D is pending approval. The test partition was previously breached through cash-close access recorded in Git history. The 16:00 vs 16:15 ET cutoff remains unresolved (Proposals A & B pending
     approval; Proposal C withdrawn); complete-case filtering policy pending approval.
-    Model training is NOT authorized. Gate B cannot be claimed as passed or closed.
+    (Historical Stage 5/6 status: Gate B was subsequently passed under User Decisions UD-1 through UD-5, unblocking Stage 7 modeling).
                         |
                         v
-  [Gate C: Baseline & Density Stability Gate] -> MODELING PREREQUISITE
+  [Gate C: Baseline & Density Stability Gate] -> PASSED WITH CAVEATS (Stage 7)
   - Fit models B0–B4 on supervised development pairs {t <= tau - 1} (2010–2019).
   - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
     scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
   - Verify HMM regime persistence on emissions {t <= tau}: dwell time >= 5 days, occupancy >= 5%.
                         |
                         v
-  [Gate D: Final Test Evaluation & Integrity Gate] -> EVALUATION PREREQUISITE
+  [Gate D: Final Test Evaluation & Integrity Gate] -> COMPLETED (Stage 8, 24 October 2026)
   - Score frozen B4 and R1 models on the held-out 2022–2023 test partition EXACTLY ONCE
-    (raw option bundles unopened; test cash close breach recorded in commit cee01a1).
+    (raw bundles audited at Stage 8; 5 gaps forward-filled; primary Jan 3 origin excluded from scoring; test cash close breach recorded in commit cee01a1).
   - Execute paired Diebold-Mariano test and stationary block bootstrap.
   - Report findings transparently, regardless of whether H1 is supported or refuted.
 +-----------------------------------------------------------------------------------------+

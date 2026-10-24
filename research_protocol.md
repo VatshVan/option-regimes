@@ -2,7 +2,7 @@
 
 **Project Title:** Regime-Conditioned Mapping from Option-Implied Risk-Neutral Information to Physical Return Distributions  
 **Course & Scope:** IE 612 (Introduction to Financial Engineering), 1-Month Empirical Project  
-**Document Status:** Stage 1 Frozen Protocol (Version 1.0, 21 October 2026)  
+**Document Status:** Stage 1 Frozen Protocol (Version 1.0, 21 October 2026; Reconciled across Stages 1–9 as of 24 October 2026)  
 **Governing Source of Truth:** [`implementation.md`](file:///D:/IE612_Project/implementation.md)  
 **Associated Documents:** [`project_implementation_idea.md`](file:///D:/IE612_Project/project_implementation_idea.md), [`SPX_data_research.md`](file:///D:/IE612_Project/SPX_data_research.md)  
 
@@ -31,14 +31,14 @@ $$\mathcal{L}(M) = -\frac{1}{|\mathcal{T}_{\text{test}}|} \sum_{t \in \mathcal{T
 Lower loss represents superior predictive density performance.
 
 ### 1.3 Hypotheses
-* **H1 (Primary — Distributional Gain):** The regime-augmented model ($R1$) achieves a strictly lower mean out-of-sample NLL than the primary non-regime comparator ($B4$) on the held-out 2022–2023 test period (whose raw option bundles remain unopened, acknowledging the 2022-01-03/04 cash close breach retained in commit cee01a1 Git history) ($\Delta \mathcal{L} = \mathcal{L}(B4) - \mathcal{L}(R1) > 0$), with statistical significance established via a paired test.
+* **H1 (Primary — Distributional Gain):** The regime-augmented model ($R1$) achieves a strictly lower mean out-of-sample NLL than the primary non-regime comparator ($B4$) on the held-out 2022–2023 test period (historically unopened through Stages 1–7; evaluated at Gate D in Stage 8 with Jan 3 origin excluded from primary scoring; test cash close breach acknowledged in commit cee01a1 Git history) ($\Delta \mathcal{L} = \mathcal{L}(B4) - \mathcal{L}(R1) > 0$), with statistical significance established via a paired test.
 * **H2 (Incrementality / Non-Redundancy):** The predictive gain of $R1$ over $B4$ is not merely a proxy for current observable volatility or trend. The improvement persists after controlling directly for observable volatility state variables in the baseline.
 * **H3 (Calibration & Tail Fidelity):** Predictive densities from $R1$ maintain acceptable calibration: Probability Integral Transform (PIT) values are approximately uniform, empirical coverage of 50%, 80%, and 95% central predictive intervals does not violate theoretical nominal rates by more than pre-specified tolerances, and tail-loss metrics are preserved.
 * **H4 (Secondary — Economic Relevance):** When predictive densities are fed into a pre-specified, transparent single-index volatility-targeting rule, $R1$ achieves superior net Sharpe ratio or lower maximum drawdown relative to simple benchmarks after transaction costs (5 bps). *(This is strictly secondary and illustrative; it cannot override a failure on H1 or H3.)*
 
 ### 1.4 Decision Rules: What Counts as Evidence
 1. **Evidence For Incremental Regime Value:**
-   * $\Delta \mathcal{L} > 0$ on the held-out test period (raw option bundles unopened; test cash close breach recorded in commit cee01a1), with a one-sided paired Diebold–Mariano test rejecting the null of equal predictive accuracy at $p < 0.05$.
+   * $\Delta \mathcal{L} > 0$ on the held-out test period (historically unopened through Stage 7; evaluated at Gate D in Stage 8 with Jan 3 origin excluded from primary scoring; test cash close breach recorded in commit cee01a1), with a one-sided paired Diebold–Mariano test rejecting the null of equal predictive accuracy at $p < 0.05$.
    * Stationary block bootstrap 95% confidence intervals for $\Delta \mathcal{L}$ exclude zero.
    * Model passes PIT uniformity diagnostics without exhibiting overconfidence (variance of PIT not collapsing).
    * Control ablations (shuffled regime probabilities, static volatility thresholding) underperform $R1$.
@@ -342,9 +342,9 @@ Timeline: 2010 to 2023 (14 Full Calendar Years: 168 Monthly Bundles)
   The sample comprises exactly 14 full calendar years (168 monthly bundles). The partition boundaries are aligned cleanly with complete calendar years to avoid cutting through intra-year macro regimes:
   * **Development / Initial Training Segment (2010–2019, 10 years, ~71.4%):** Used for pipeline calibration, baseline stability tests, and initial in-sample parameter estimation across multiple market cycles.
   * **Validation Segment (2020–2021, 2 years, ~14.3%):** Spans the 2020 Covid shock and recovery. Used exclusively for hyperparameter tuning (number of HMM regimes $K \in \{2, 3\}$, regularization penalties, neural network layer width).
-  * **Held-Out Test Segment (2022–2023, 2 years, ~14.3%):** Spans the 2022 rate-hiking cycle / bear market and 2023 disinflation rally. Scored only once at Gate D. Raw 2022–2023 option bundles remain unopened. (Note: January 3 and 4, 2022 cash closes and derived validation return were retrieved in Stage 6 commit `cee01a1` and remain in Git history; the test partition cannot be described as sealed or untouched).
+  * **Held-Out Test Segment (2022–2023, 2 years, ~14.3%):** Spans the 2022 rate-hiking cycle / bear market and 2023 disinflation rally. Scored only once at Gate D in Stage 8. (Historical note: Raw 2022–2023 option bundles remained unopened through Stages 1–7; January 3 and 4, 2022 cash closes and derived validation return were retrieved in Stage 6 commit `cee01a1` and remain in Git history; the test partition cannot be described as sealed or untouched).
   *(Note on Calendar Partitioning vs. Nominal Counts: This partition is strictly defined by complete calendar-year spans: 2010–2019 [Train, 10 years, ~71.4%], 2020–2021 [Val, 2 years, ~14.3%], and 2022–2023 [Test, 2 years, ~14.3%]. This preserves complete annual macro regimes. Exact session counts will be computed directly from the full calendar audit without assuming nominal totals in advance).*
-* **Freezing Rule:** The test segment raw option bundles remain unopened and must not be processed, evaluated, or scored until all model architectures, hyperparameters, data cleaning rules, and calibration thresholds are permanently frozen.
+* **Freezing Rule:** Historical governing rule: the test segment raw option bundles remained unopened and were not processed, evaluated, or scored until all model architectures, hyperparameters, data cleaning rules, and calibration thresholds were permanently frozen at Gate C. Gate D test evaluation was subsequently authorized and executed in Stage 8.
 
 ### 6.2 Refit Cadence and Walk-Forward Protocol
 * **Walk-Forward Refit:** Expanding window design. Models are refit periodically on an established cadence.
@@ -465,12 +465,12 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - Converted T-bill discount yield to continuous rate: r = -(365/91)*ln(1-d*91/360). Causal carryforward
     on Columbus Day 2010 and Veterans Day 2016 explicitly logged (zero silent imputation).
   - Candidate feature datasets generated: Development (2,516 sessions, 2,233 feature-complete rows yielding 2,232 usable supervised training pairs [283 missing/incomplete, terminal row 2019-12-31 target nulled], SHA-256: 138fa68a...) and Validation (505 sessions, 496 feature-complete rows yielding 495 usable validation scoring rows [9 missing/incomplete, terminal row 2021-12-31 target nulled], SHA-256: 8bedc8b4...). NOT permanently frozen.
-  - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history). The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity. Raw 2022–2023 option bundles remain unopened.
-  - USER AUTHORIZATION & GATE B RESOLUTION (22 October 2026): User-authorized decisions unblocked Stage 7 Development and Validation model estimation: Proposal A adopted for timing ($y_t = \ln(S_{t+2}/S_{t+1})$); complete-case filtering authorized (2,231 dev pairs, 494 val rows; mid-2012 benchmark: 1,844 pairs); test cash close breach acknowledged in Git history and Jan 3-to-Jan 4 return excluded from test scoring; 2022–2023 option continuity audit deferred to Gate D. Model fitting is AUTHORIZED for Development and Validation only; test set evaluation remains strictly barred.
+  - TEST BOUNDARY DISCLOSURE: ^GSPC closes for 2022-01-03 and 2022-01-04 accessed during download and committed in commit cee01a1 along with the 2021-12-31 target return (retained in Git history). The test partition cannot be claimed as intact or sealed. Terminal boundary labels on 2019-12-31 and 2021-12-31 set strictly to NaN to guarantee partition purity. Raw 2022–2023 option bundles remained unopened through Stage 7.
+  - USER AUTHORIZATION & GATE B RESOLUTION (22 October 2026): User-authorized decisions unblocked Stage 7 Development and Validation model estimation: Proposal A adopted for timing ($y_t = \ln(S_{t+2}/S_{t+1})$); complete-case filtering authorized (2,231 dev pairs, 494 val rows; mid-2012 benchmark: 1,844 pairs); test cash close breach acknowledged in Git history and Jan 3-to-Jan 4 return excluded from test scoring; 2022–2023 option continuity audit deferred to Gate D. Model fitting is AUTHORIZED for Development and Validation only; test set evaluation remained strictly barred until Gate D.
 
                         |
                         v
-  [Gate C: Baseline Stability Gate] -> MODELING PREREQUISITE
+  [Gate C: Baseline Stability Gate] -> PASSED WITH CAVEATS (Stage 7)
   - Fit models B0–B4 on development split (2010–2019).
   - Verify density validity on validation split (2020–2021): all densities integrate to 1.0,
     scales sigma_t > 10^-4, degrees of freedom nu_t >= 2.1, zero NaN/Inf losses.
@@ -478,8 +478,9 @@ To prove that $R1$ captures genuine persistent latent dynamics rather than incid
   - If MDN unstable: Simplify to single-component Student-t location-scale model.
                         |
                         v
-  [Gate D: Final Evaluation & Novelty Integrity Gate] -> EVALUATION PREREQUISITE
-  - Score held-out 2022–2023 test set ONCE (raw option bundles unopened; test cash close breach recorded in commit cee01a1).
+  [Gate D: Final Evaluation & Novelty Integrity Gate] -> COMPLETED (Stage 8, 24 October 2026)
+  - Score held-out 2022–2023 test set ONCE across 24 expanding walk-forward refit blocks (audited 24 monthly option bundles, 4,100,693 contract rows, 5 isolated gaps forward-filled; Jan 3 origin excluded from primary scoring; test cash close breach recorded in commit cee01a1).
+  - Primary outcome: Inconclusive (d_bar = +0.0054 nats/session, p = 0.0732 one-sided, 95% bootstrap CI [-0.00198, +0.01384] spans zero; baseline B4 favored on parsimony).
   - Execute paired Diebold-Mariano test and stationary block bootstrap.
   - Report findings honestly (positive or null); freeze final write-up.
 +-----------------------------------------------------------------------------------+
@@ -503,16 +504,16 @@ The project acknowledges the established literature and explicitly circumscribes
 
 The following operational choices are explicitly labeled as **UNRESOLVED** and must be resolved based on the empirical findings of the Stage 2 data audit and course administrative directives:
 
-| Unresolved Decision | Governing Constraints | Provisional Default | Action Required in Stage 2 Audit |
+| Unresolved Decision | Governing Constraints | Provisional Default | Final Project Resolution (Stages 6–9) |
 |---|---|---|---|
-| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **Gate B Status:** 2010–2021 daily session continuity audited (3,021 expected, 2,994 observed, 30 missing, 0.993% aggregate missing rate). 2022–2023 test period daily continuity unaudited to avoid opening raw test option bundles; January 3 and 4, 2022 cash closes and derived label were committed in cee01a1 and remain in Git history. |
-| **2. Exact Split Boundary Dates** | Train/Val/Test calendar span aligned with macro regimes. | **Train:** 2010-2019 (~71.4%) <br>**Val:** 2020-2021 (~14.3%) <br>**Test:** 2022-2023 (~14.3%) | **Provisional Default Fixed:** Calendar-year partition (~71.4% / 14.3% / 14.3% by year span) approved; exact usable session counts will be computed from the full calendar audit without assuming nominal totals. |
-| **3. Risk-Free Rate Source & Curve** | Forward inversion requires reliable daily risk-free rates matching contract DTE. | **Daily 13-week T-Bill (^IRX) or FRED 1M/3M CMT** | **Gate B Status (Stage 6):** Continuous day-count conversion derived and implemented in interim datasets ({\\text{cont}} = -\\frac{365}{91} \\ln(1 - d \\frac{91}{360})$). Multi-tenor curve matching remains open. Stage 4 demonstration rates (.508\\%$ and .918\\%$) preserved as illustrative benchmarks. |
-| **4. Density Architecture Selection** | Balance between flexible multi-modality and numerical training stability on daily series. | **Student-$ Location-Scale Regression** (Primary fallback: 2-component MDN) | Evaluate MDN log-likelihood stability on validation split. If loss divergence or mode collapse occurs, freeze Student-$. |
-| **5. Number of Latent Regimes ($)** | Must maintain distinct, economically interpretable state separation without overfitting. | ** = 2$ (Low Vol / High Vol)** (Test =3$ on validation only) | Inspect state occupancy in validation refits. If any state has $<5\\%$ dwell time, freeze =2$. |
-| **6. Inclusion of Secondary Portfolio Backtest** | Depends on course rubric requirements and remaining time in the 1-month timeline. | **Optional secondary deliverable** | Confirm with course instructor/rubric whether portfolio allocation is required or purely illustrative. |
-| **7. OptionsDX Raw Redistribution Compliance** | OptionsDX terms prohibit public redistribution of raw CSV files. | **Local gitignore of Data/** | Ensure .gitignore permanently excludes raw files; include only processed features or code in final hand-in. |
-| **8. Information Cutoff & Quote Synchronization** | Cash equity closes at 16:00 ET; SPX options historically traded until 16:15 ET. 15-minute lookahead must be prevented. | **Unresolved Cutoff Gate** | **Gate B Status (Stage 6):** Empirical audit verified uniform '16:00' vendor string, but absence of exchange timestamp proof leaves 16:15 ET lookahead risk active. Operational model fitting remains strictly gated. |
+| **1. Exact Historical Sample Range** | Must have contiguous daily EOD coverage and multiple market cycles (stress and calm). | **2010-01-01 to 2023-12-31** (14 full calendar years, 168 monthly bundles) | **RESOLVED at Gate D:** 2010–2023 fully audited. 2022–2023 audited at Stage 8 (24 bundles, 4,100,693 contract rows, 5 isolated gaps forward-filled). Cash closes truncated to 2024-01-03 to mature year-end labels; Jan 3/4 2022 cash close breach acknowledged. |
+| **2. Exact Split Boundary Dates** | Train/Val/Test calendar span aligned with macro regimes. | **Train:** 2010-2019 (~71.4%) <br>**Val:** 2020-2021 (~14.3%) <br>**Test:** 2022-2023 (~14.3%) | **RESOLVED:** Calendar partitions fixed. Usable complete-case counts: 2,231 dev pairs, 494 val rows, 500 primary test rows (501 full test rows, 495 actual-quote rows). |
+| **3. Risk-Free Rate Source & Curve** | Forward inversion requires reliable daily risk-free rates matching contract DTE. | **Daily 13-week T-Bill (^IRX) or FRED 1M/3M CMT** | **RESOLVED at Gate B:** Continuous day-count conversion implemented ($r_{\text{cont}} = -\frac{365}{91} \ln(1 - d \frac{91}{360})$). Carryforwards on Columbus Day 2010 and Veterans Day 2016 logged. |
+| **4. Density Architecture Selection** | Balance between flexible multi-modality and numerical training stability on daily series. | **Student-$t$ Location-Scale Regression** (Primary fallback: 2-component MDN) | **RESOLVED at Gate C:** Student-$t$ location-scale regression frozen as primary parametric density family; MDN dropped due to loss instability during validation. |
+| **5. Number of Latent Regimes ($K$)** | Must maintain distinct, economically interpretable state separation without overfitting. | **$K = 2$ (Low Vol / High Vol)** (Test $K=3$ on validation only) | **RESOLVED at Gate C:** $K=2$ frozen. Dwell $\ge 17.6$ sessions, occupancy $\ge 19.8\%$ across all rolling refits. $K=3$ failed validation improvement threshold. |
+| **6. Inclusion of Secondary Portfolio Backtest** | Depends on course rubric requirements and remaining time in the 1-month timeline. | **Optional secondary deliverable** | **RESOLVED:** Omitted from final claims. The study is strictly an econometric density evaluation; zero investment or portfolio superiority claims are made. |
+| **7. OptionsDX Raw Redistribution Compliance** | OptionsDX terms prohibit public redistribution of raw CSV files. | **Local gitignore of Data/** | **RESOLVED:** `Data/` is strictly `.gitignore`'d. Zero raw proprietary files committed; only derived features, model code, and summary metrics are retained. |
+| **8. Information Cutoff & Quote Synchronization** | Cash equity closes at 16:00 ET; SPX options historically traded until 16:15 ET. 15-minute lookahead must be prevented. | **Unresolved Cutoff Gate** | **RESOLVED at Gate B (User Decision UD-1):** Proposal A timing adopted ($y_t \equiv \ln(S_{t+2}/S_{t+1})$), delaying target window past the 16:15 option cutoff. |
 
 ---
 

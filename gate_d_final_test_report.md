@@ -84,7 +84,7 @@ All modeling architectures, estimation routines, and evaluation metrics were fro
 | **Refit Schedule** | 21-session expanding walk-forward | 24 blocks across 501 test sessions; contemporaneous HMM ($t \le \tau_m$). |
 | **Label Maturity Rule** | Supervised training pairs strictly $t \le \tau_m - 2$ | Prevents future return targets from entering supervised estimation. |
 | **HMM Filtering Rule** | Causal forward recursion only | Strict anti-leakage: zero Viterbi paths, zero backward smoothing. |
-| **CRPS Evaluation** | Exact closed-form formula (Jordan et al., 2019) | Machine-precision ($< 10^{-14}$) analytical integration over $(-\infty, \infty)$. |
+| **CRPS Evaluation** | Exact closed-form formula (Jordan et al., 2019) | CRPS is evaluated with the analytical Student-$t$ formula; a separate PDF normalization diagnostic over $[\mu-20\sigma,\mu+20\sigma]$ returns approximately $0.99999435$, with the difference from one attributable to omitted tail mass. This diagnostic does not establish machine-precision accuracy for the CRPS implementation. |
 
 ---
 
@@ -94,7 +94,7 @@ All modeling architectures, estimation routines, and evaluation metrics were fro
 The complete data audit was executed and persisted to [`output/stage8_test/raw_data_audit_2022_2023.json`](file:///D:/IE612_Project/output/stage8_test/raw_data_audit_2022_2023.json):
 * **File Inventory:** Exactly 24 monthly OptionsDX SPX option bundles present across 8 quarterly directories, representing each month (`202201` through `202212` and `202301` through `202312`) exactly once.
 * **Volume:** 4,100,693 contract-level records, 1.38 GB uncompressed.
-* **Header & Type Checks:** 100% column header conformity (all 33 columns matching schema). Structural numeric columns (`[UNDERLYING_LAST]`, `[DTE]`, `[STRIKE]`) parsed with zero missing or invalid values. Quote bid/ask columns had $712$ blank quotes ($0.017\%$ of records), handled by standard $0.05$ minimum bid filtering.
+* **Header & Type Checks:** 100% column header conformity (all 33 columns matching schema). Structural numeric columns (`[UNDERLYING_LAST]`, `[DTE]`, `[STRIKE]`) parsed with zero missing or invalid values. In the audit, the quote fields contain 1,190 missing values each for `C_BID` and `C_ASK`, and 1,192 each for `P_BID` and `P_ASK` (about 0.029% per field relative to 4,100,693 records). Missing quote observations are unavailable to the contract-level quote filters; the $0.05 minimum-bid rule is applied separately to non-missing quotes.
 * **Timestamp Rule Verification:** Every single quote date across all 24 files was verified to have **exactly one distinct timestamp** (`len(ts) == 1`), and that timestamp uniformly reflects the `16:00` EOD snapshot. Zero multiple-timestamp dates exist.
 * **Date Uniqueness:** Zero date overlap across monthly files confirmed.
 
