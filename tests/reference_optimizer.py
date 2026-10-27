@@ -46,6 +46,42 @@ def objective_and_grad(theta, X, y, lam):
     return f, g
 
 
+def b1_objective_and_grad(theta, rv, y):
+    """
+    ModelB1 objective (mean Student-t NLL, no penalty) and gradient.
+    theta = [mu, p_a0, p_a1, p_nu]; sigma = softplus(p_a0) + 1e-4 + softplus(p_a1) * rv.
+    """
+    mu, pa0, pa1, rn = theta
+    sig = softplus(pa0) + SIGMA_MIN + softplus(pa1) * rv
+    nu = softplus(rn) + NU_MIN
+    z = (y - mu) / sig
+    u = 1.0 + z * z / nu
+    ll = gammaln((nu + 1) / 2) - gammaln(nu / 2) - 0.5 * np.log(np.pi * nu) - np.log(sig) - (nu + 1) / 2 * np.log(u)
+    w = (nu + 1) / (nu * u)
+    dmu = w * z / sig
+    dsig = (-1 + w * z * z) / sig
+    dnu = 0.5 * (digamma((nu + 1) / 2) - digamma(nu / 2)) - 0.5 / nu - 0.5 * np.log(u) + (nu + 1) / 2 * (z * z / nu ** 2) / u
+    g = np.array([
+        -dmu.mean(),
+        -(dsig * expit(pa0)).mean(),
+        -(dsig * expit(pa1) * rv).mean(),
+        -dnu.mean() * expit(rn),
+    ])
+    return -ll.mean(), g
+
+
+def b1_reference_optimum(rv, y):
+    rv = np.asarray(rv, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    s = np.std(y, ddof=1)
+    theta0 = np.array([np.mean(y), np.log(max(1e-4, np.expm1(0.5 * s))), np.log(np.expm1(0.05)), np.log(np.expm1(5.0 - 2.1))])
+    res = minimize(
+        b1_objective_and_grad, theta0, args=(rv, y), jac=True, method="L-BFGS-B",
+        options=dict(maxiter=50000, maxfun=100000, ftol=1e-16, gtol=1e-12, maxcor=50),
+    )
+    return res.fun, res.x
+
+
 def reference_log_density(theta, X, y):
     """Per-row Student-t log density at parameters theta."""
     from scipy import stats

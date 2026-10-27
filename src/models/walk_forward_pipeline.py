@@ -10,7 +10,8 @@ Governing specifications:
 Key Principles:
 1. Operational estimand y_t = ln(S_{t+2} / S_{t+1}) (Proposal A).
 2. Label availability: Supervised models at refit origin tau_m use t <= tau_m - 2.
-3. Contemporaneous HMM emissions and scalers use t <= tau_m.
+3. Contemporaneous HMM emissions use t <= tau_m; feature scalers are fit on the
+   supervised training rows (t <= tau_m - 2).
 4. Complete-case filtering: origins with valid_Q_all5 == True.
 5. Partition boundary purity: targets crossing partitions are nulled.
 6. Hyperparameter tuning on validation: lambda in {1e-4, 1e-3, 1e-2}, K in {2, 3}.
@@ -323,6 +324,9 @@ def run_walk_forward(
                 'score_dates': f"{df_all['date'].iloc[score_start]} to {df_all['date'].iloc[score_end - 1]}",
                 'n_scored': int(score_end - score_start)
             },
+            'hmm_n_iter': int(hmm.n_iter_),
+            'hmm_converged': bool(hmm.converged_),
+            'hmm_final_log_lik': float(hmm.log_lik_history_[-1]),
             'hmm_transition_matrix': trans.tolist(),
             'hmm_diagonal_probabilities': [float(d) for d in diags],
             'hmm_expected_dwell_times': [float(d) for d in dwells],
@@ -356,7 +360,7 @@ def run_walk_forward(
             mu = preds[m]['mu'][val_indices]
             sigma = preds[m]['sigma'][val_indices]
             crps_vals = [gaussian_crps(val_y[i], mu[i], sigma[i]) for i in range(len(val_y))]
-            pit_vals = compute_pit_values_gaussian(val_y, mu[0], sigma[0])
+            pit_vals = compute_pit_values_gaussian(val_y, mu, sigma)
             ks_res = stats.kstest(pit_vals, 'uniform')
             
             # Coverage

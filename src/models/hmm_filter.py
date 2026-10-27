@@ -33,6 +33,10 @@ class CausalGaussianHMM:
         self.means = None  # Emission means (K, D)
         self.vars = None  # Emission variances (K, D)
         self.is_fitted = False
+        # EM diagnostics (set by fit)
+        self.n_iter_ = 0
+        self.converged_ = False
+        self.log_lik_history_ = []
         
     def _init_params(self, Y: np.ndarray):
         """Initializes parameters using quantiles of the volatility feature (dim 1)."""
@@ -90,11 +94,15 @@ class CausalGaussianHMM:
         self._init_params(Y)
         
         prev_log_lik = -np.inf
-        
+        self.n_iter_ = 0
+        self.converged_ = False
+        self.log_lik_history_ = []
+
         for iteration in range(self.max_iter):
             # --- E-Step: Forward-Backward on Training Set ---
             log_B = self._emission_log_prob(Y)
-            B = np.exp(log_B - np.max(log_B, axis=1, keepdims=True))
+            log_B_max = np.max(log_B, axis=1, keepdims=True)
+            B = np.exp(log_B - log_B_max)
             
             # Forward pass with scaling
             alpha = np.zeros((N, K))
@@ -114,8 +122,10 @@ class CausalGaussianHMM:
                     c[t] = 1e-12
                 alpha[t] /= c[t]
                 
-            # Log-likelihood
-            log_lik = np.sum(np.log(c))
+            # Log-likelihood of Y under the current parameters: the scaling constants c_t are
+            # computed from row-max-shifted emissions, so the shifts are added back
+            log_lik = float(np.sum(np.log(c)) + np.sum(log_B_max))
+            self.log_lik_history_.append(log_lik)
             
             # Backward pass with same scaling
             beta = np.zeros((N, K))
@@ -158,7 +168,9 @@ class CausalGaussianHMM:
             self.vars = np.maximum(self.vars, 1e-4)
             
             # Convergence check
+            self.n_iter_ = iteration + 1
             if abs(log_lik - prev_log_lik) < self.tol:
+                self.converged_ = True
                 break
             prev_log_lik = log_lik
             

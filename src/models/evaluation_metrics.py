@@ -66,8 +66,8 @@ def compute_pit_values_student_t(y: np.ndarray, mu: np.ndarray, sigma: np.ndarra
     """Computes PIT values u_t = F(y_t) for Student-t densities."""
     return stats.t.cdf(y, df=nu, loc=mu, scale=sigma)
 
-def compute_pit_values_gaussian(y: np.ndarray, mu: float, sigma: float) -> np.ndarray:
-    """Computes PIT values u_t = F(y_t) for Gaussian densities."""
+def compute_pit_values_gaussian(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray) -> np.ndarray:
+    """Computes PIT values u_t = F_t(y_t) for Gaussian densities (per-row mu_t, sigma_t; scalars broadcast)."""
     return stats.norm.cdf(y, loc=mu, scale=sigma)
 
 def compute_interval_coverage(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray, nominal_coverages=[0.50, 0.80, 0.95]) -> dict:

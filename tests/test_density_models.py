@@ -21,7 +21,12 @@ from src.models.density_models import (
     StudentTRegression,
 )
 from src.models.walk_forward_pipeline import Q_COLS, X_COLS, run_walk_forward
-from tests.reference_optimizer import objective_and_grad, reference_optimum
+from tests.reference_optimizer import (
+    b1_objective_and_grad,
+    b1_reference_optimum,
+    objective_and_grad,
+    reference_optimum,
+)
 
 LAM = 0.01
 
@@ -207,6 +212,31 @@ def test_newton_polish_completes_truncated_lbfgs(dev_design):
     assert abs(r["penalized_loss"] - f_ref) < 1e-12
 
 
+def test_b1_reference_gradient_matches_finite_differences():
+    rng = np.random.default_rng(8)
+    rv = np.abs(0.15 + 0.05 * rng.standard_normal(300))
+    y = 0.01 * rng.standard_t(5, size=300)
+    theta = np.array([2e-4, -5.0, -3.0, 1.2])
+    _, g = b1_objective_and_grad(theta, rv, y)
+    h = 1e-6
+    for i in range(4):
+        e = np.zeros(4); e[i] = h
+        fd = (b1_objective_and_grad(theta + e, rv, y)[0] - b1_objective_and_grad(theta - e, rv, y)[0]) / (2 * h)
+        assert fd == pytest.approx(g[i], abs=1e-7, rel=1e-6)
+
+
+def test_b1_reaches_reference_optimum(dev_design):
+    m = ModelB1_RVLocationScaleStudentT().fit(dev_design["rv"], dev_design["y"])
+    r = m.fit_report_
+    f_ref, th = b1_reference_optimum(dev_design["rv"], dev_design["y"])
+    assert r["converged"] and r["hessian_positive_definite"]
+    assert abs(r["penalized_loss"] - f_ref) < 1e-12
+    assert r["penalized_loss"] == r["unpenalized_nll"]
+    assert -m.log_density(dev_design["rv"], dev_design["y"]).mean() == pytest.approx(f_ref, abs=1e-12)
+    assert m.mu == pytest.approx(th[0], abs=1e-7)
+    assert m.nu == pytest.approx(np.logaddexp(0, th[3]) + 2.1, abs=1e-4)
+
+
 def test_reference_optimum_respects_nesting(dev_design):
     """Sanity check of the reference itself: at true optima B4 beats B2 and B3."""
     y = dev_design["y"]
@@ -247,7 +277,7 @@ def _synthetic_walk_forward_frame(n_dev=400, n_val=84, seed=7):
     return df, n_dev
 
 
-@pytest.mark.xfail(strict=True, reason="Defect 1e.1: B0 PIT uses mu[0], sigma[0] for all rows (walk_forward_pipeline.py)")
+
 def test_b0_pit_uses_per_row_parameters():
     df, n_dev = _synthetic_walk_forward_frame()
     res = run_walk_forward(df, val_start_idx=n_dev, K_regimes=2, lambda_reg=LAM)

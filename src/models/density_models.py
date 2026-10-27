@@ -335,6 +335,9 @@ class ModelB1_RVLocationScaleStudentT:
     mu_t = mu
     nu >= 2.1
     Optimized via Maximum Likelihood on in-sample training window.
+
+    Fitted in float64 with mu optimised as phi = mu / sd(y_train) and the same L-BFGS +
+    Newton-polish convergence rule as StudentTRegression (see _run_lbfgs).
     """
     def __init__(self, random_state: int = 42):
         self.random_state = random_state
@@ -344,58 +347,44 @@ class ModelB1_RVLocationScaleStudentT:
         self.nu: float = 5.0
         self.is_fitted = False
 
-    def fit(self, rv20d: np.ndarray, y: np.ndarray, max_iter: int = 60):
-        rv20d_t = torch.tensor(rv20d, dtype=torch.float32)
-        y_t = torch.tensor(y, dtype=torch.float32)
-        
+    def fit(self, rv20d: np.ndarray, y: np.ndarray, max_iter: int = 2000,
+            grad_tol: float = 1e-8, rel_change_tol: float = 1e-15, max_newton_steps: int = 20):
+        rv20d_t = torch.as_tensor(np.asarray(rv20d, dtype=np.float64))
+        y_t = torch.as_tensor(np.asarray(y, dtype=np.float64))
+
         # Initial guesses
         mu_init = float(y_t.mean())
         std_init = float(y_t.std())
-        
+
         # Parameter tensors:
         # alpha_0 = softplus(p_a0) + 1e-4
         # alpha_1 = softplus(p_a1)
         # nu = softplus(p_nu) + 2.1
-        # mu = p_mu
-        p_mu = torch.tensor([mu_init], dtype=torch.float32, requires_grad=True)
-        p_a0 = torch.tensor([math.log(max(1e-4, math.exp(0.5 * std_init) - 1.0))], dtype=torch.float32, requires_grad=True)
-        p_a1 = torch.tensor([math.log(max(1e-4, math.exp(0.05) - 1.0))], dtype=torch.float32, requires_grad=True)
-        p_nu = torch.tensor([math.log(max(1e-4, math.exp(5.0 - 2.1) - 1.0))], dtype=torch.float32, requires_grad=True)
-        
-        params = [p_mu, p_a0, p_a1, p_nu]
-        optimizer = torch.optim.LBFGS(params, lr=0.5, line_search_fn="strong_wolfe", max_iter=max_iter)
+        # mu = s * phi_mu, s = sd(y_train) (preconditioning)
+        s = std_init
+        f64 = dict(dtype=torch.float64, requires_grad=True)
+        phi_mu = torch.tensor([mu_init / s], **f64)
+        p_a0 = torch.tensor([math.log(max(1e-4, math.exp(0.5 * std_init) - 1.0))], **f64)
+        p_a1 = torch.tensor([math.log(max(1e-4, math.exp(0.05) - 1.0))], **f64)
+        p_nu = torch.tensor([math.log(max(1e-4, math.exp(5.0 - 2.1) - 1.0))], **f64)
+        params = [phi_mu, p_a0, p_a1, p_nu]
 
         def objective():
             a0 = F.softplus(p_a0) + 1e-4
             a1 = F.softplus(p_a1)
             nu = F.softplus(p_nu) + 2.1
-            mu = p_mu
-
             sig = a0 + a1 * rv20d_t
-            z = (y_t - mu) / sig
+            return -torch.mean(_student_t_log_lik(y_t, s * phi_mu, sig, nu))
 
-            log_p = (
-                torch.lgamma(0.5 * (nu + 1.0))
-                - torch.lgamma(0.5 * nu)
-                - 0.5 * torch.log(math.pi * nu)
-                - torch.log(sig)
-                - 0.5 * (nu + 1.0) * torch.log(1.0 + (z ** 2) / nu)
-            )
-            return -log_p.mean()
-
-        def closure():
-            optimizer.zero_grad()
-            loss = objective()
-            loss.backward()
-            return loss
-
-        optimizer.step(closure)
         # B1 has no penalty: penalized and unpenalized objectives coincide
-        self.fit_report_ = _lbfgs_fit_report(
-            optimizer, params, objective, objective,
-            lambda: F.softplus(p_nu) + 2.1,
+        self.fit_report_ = _run_lbfgs(
+            params, objective, objective, lambda: F.softplus(p_nu) + 2.1,
+            max_iter=max_iter, grad_tol=grad_tol, rel_change_tol=rel_change_tol,
+            max_newton_steps=max_newton_steps, label="ModelB1_RVLocationScaleStudentT",
         )
+        self.fit_report_["mu_precondition_scale"] = s
 
+        p_mu = s * phi_mu
         self.mu = float(p_mu.item())
         self.alpha_0 = float((F.softplus(p_a0) + 1e-4).item())
         self.alpha_1 = float(F.softplus(p_a1).item())

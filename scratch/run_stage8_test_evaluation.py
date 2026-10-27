@@ -285,7 +285,7 @@ def evaluate_subset(df_all, preds, filtered_pi_all, eval_indices, label="Test"):
         m_dict = {'nll': nll}
         if m == 'B0':
             crps_vals = [gaussian_crps(y_eval[i], mu[i], sigma[i]) for i in range(len(y_eval))]
-            pit_vals = compute_pit_values_gaussian(y_eval, mu[0], sigma[0])
+            pit_vals = compute_pit_values_gaussian(y_eval, mu, sigma)
             ks_res = stats.kstest(pit_vals, 'uniform')
             cov_res = {}
             for cov in [0.50, 0.80, 0.95]:
