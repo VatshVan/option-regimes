@@ -292,7 +292,14 @@ def run_walk_forward(
             'hmm_state_occupancies_train_mean': [float(o) for o in occ_mean],
             'dwell_time_constraint_pass': dwell_pass,
             'occupancy_constraint_pass': occ_pass,
-            'all_constraints_pass': bool(dwell_pass and occ_pass)
+            'all_constraints_pass': bool(dwell_pass and occ_pass),
+            'fit_reports': {
+                'B1': m_b1.fit_report_,
+                'B2': m_b2.fit_report_,
+                'B3': m_b3.fit_report_,
+                'B4': m_b4.fit_report_,
+                'R1': m_r1.fit_report_
+            }
         })
         
     # Evaluate performance on the 494 complete-case validation scoring rows
@@ -472,5 +479,12 @@ def fit_insample_development(df_dev: pd.DataFrame, lambda_reg: float = 1e-3, K_r
     return {
         'insample_metrics': insample_metrics,
         'dm_test': dm_res,
-        'train_indices': train_indices
+        'train_indices': train_indices,
+        'fit_reports': {
+            'B1': m_b1.fit_report_,
+            'B2': m_b2.fit_report_,
+            'B3': m_b3.fit_report_,
+            'B4': m_b4.fit_report_,
+            'R1': m_r1.fit_report_
+        }
     }

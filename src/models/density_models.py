@@ -21,6 +21,75 @@ import torch.nn.functional as F
 from scipy import stats
 from typing import Tuple, Dict, Any, Optional
 
+def _lbfgs_fit_report(
+    optimizer: torch.optim.LBFGS,
+    params,
+    penalized_fn,
+    unpenalized_fn,
+    nu_fn,
+) -> Dict[str, Any]:
+    """
+    Post-hoc diagnostics for a completed single torch LBFGS.step call.
+    Reads the optimizer state and re-evaluates the objective at the final
+    parameters; it does not modify parameters, so fitted predictions are unchanged.
+    stop_reason reproduces the order of termination checks in torch LBFGS.step.
+    """
+    group = optimizer.param_groups[0]
+    state = optimizer.state[optimizer._params[0]]
+    n_iter = int(state.get("n_iter", 0))
+    func_evals = int(state.get("func_evals", 0))
+
+    for p in params:
+        p.grad = None
+    with torch.enable_grad():
+        loss = penalized_fn()
+        loss.backward()
+    flat_grad = torch.cat([p.grad.reshape(-1) for p in params])
+    for p in params:
+        p.grad = None
+    with torch.no_grad():
+        unpen = float(unpenalized_fn())
+        nu = float(nu_fn())
+    max_abs_grad = float(flat_grad.abs().max())
+    loss_val = float(loss.detach())
+
+    prev_flat_grad = state.get("prev_flat_grad")
+    prev_loss = state.get("prev_loss")
+    d, t = state.get("d"), state.get("t")
+    tol_change = group["tolerance_change"]
+    if n_iter == 0:
+        stop_reason = "grad_tol_at_init"
+    elif prev_flat_grad is not None and torch.equal(prev_flat_grad, flat_grad):
+        # gtd break: prev_flat_grad is overwritten with the current gradient before the check
+        stop_reason = "directional_derivative_tol"
+    elif n_iter >= group["max_iter"]:
+        stop_reason = "max_iter"
+    elif func_evals - 1 >= group["max_eval"]:
+        stop_reason = "max_eval"
+    elif max_abs_grad <= group["tolerance_grad"]:
+        stop_reason = "grad_tol"
+    elif d is not None and float(d.mul(t).abs().max()) <= tol_change:
+        stop_reason = "step_tol"
+    elif prev_loss is not None and abs(float(loss_val) - float(prev_loss)) < tol_change:
+        stop_reason = "loss_change_tol"
+    else:
+        stop_reason = "unknown"
+
+    return {
+        "n_iter": n_iter,
+        "func_evals": func_evals,
+        "max_iter": int(group["max_iter"]),
+        "max_eval": int(group["max_eval"]),
+        "stop_reason": stop_reason,
+        "converged": stop_reason in ("grad_tol", "grad_tol_at_init"),
+        "penalized_loss": loss_val,
+        "unpenalized_nll": unpen,
+        "max_abs_grad": max_abs_grad,
+        "nu": nu,
+        "dtype": str(flat_grad.dtype).replace("torch.", ""),
+    }
+
+
 class RobustFeatureScaler:
     """
     Robust feature scaler using sample median and Interquartile Range (IQR):
@@ -120,18 +189,18 @@ class ModelB1_RVLocationScaleStudentT:
         p_a1 = torch.tensor([math.log(max(1e-4, math.exp(0.05) - 1.0))], dtype=torch.float32, requires_grad=True)
         p_nu = torch.tensor([math.log(max(1e-4, math.exp(5.0 - 2.1) - 1.0))], dtype=torch.float32, requires_grad=True)
         
-        optimizer = torch.optim.LBFGS([p_mu, p_a0, p_a1, p_nu], lr=0.5, line_search_fn="strong_wolfe", max_iter=max_iter)
-        
-        def closure():
-            optimizer.zero_grad()
+        params = [p_mu, p_a0, p_a1, p_nu]
+        optimizer = torch.optim.LBFGS(params, lr=0.5, line_search_fn="strong_wolfe", max_iter=max_iter)
+
+        def objective():
             a0 = F.softplus(p_a0) + 1e-4
             a1 = F.softplus(p_a1)
             nu = F.softplus(p_nu) + 2.1
             mu = p_mu
-            
+
             sig = a0 + a1 * rv20d_t
             z = (y_t - mu) / sig
-            
+
             log_p = (
                 torch.lgamma(0.5 * (nu + 1.0))
                 - torch.lgamma(0.5 * nu)
@@ -139,12 +208,21 @@ class ModelB1_RVLocationScaleStudentT:
                 - torch.log(sig)
                 - 0.5 * (nu + 1.0) * torch.log(1.0 + (z ** 2) / nu)
             )
-            loss = -log_p.mean()
+            return -log_p.mean()
+
+        def closure():
+            optimizer.zero_grad()
+            loss = objective()
             loss.backward()
             return loss
 
         optimizer.step(closure)
-        
+        # B1 has no penalty: penalized and unpenalized objectives coincide
+        self.fit_report_ = _lbfgs_fit_report(
+            optimizer, params, objective, objective,
+            lambda: F.softplus(p_nu) + 2.1,
+        )
+
         self.mu = float(p_mu.item())
         self.alpha_0 = float((F.softplus(p_a0) + 1e-4).item())
         self.alpha_1 = float(F.softplus(p_a1).item())
@@ -201,6 +279,13 @@ class StudentTRegression(nn.Module):
         return mu, sig, nu
 
     def nll_loss(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return self.unpenalized_nll(x, y) + self.penalty()
+
+    def penalty(self) -> torch.Tensor:
+        # Regularization: L2 penalty strictly on linear weights (excluding biases)
+        return self.l2_reg * (self.fc_mu.weight.pow(2).sum() + self.fc_sig.weight.pow(2).sum())
+
+    def unpenalized_nll(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         mu, sig, nu = self.forward(x)
         z = (y - mu) / sig
         log_norm = (
@@ -211,12 +296,7 @@ class StudentTRegression(nn.Module):
         )
         log_kernel = -0.5 * (nu + 1.0) * torch.log(1.0 + (z ** 2) / nu)
         log_lik = log_norm + log_kernel
-        
-        nll = -torch.mean(log_lik)
-        
-        # Regularization: L2 penalty strictly on linear weights (excluding biases)
-        reg = self.l2_reg * (self.fc_mu.weight.pow(2).sum() + self.fc_sig.weight.pow(2).sum())
-        return nll + reg
+        return -torch.mean(log_lik)
 
     def fit(self, X: np.ndarray, y: np.ndarray, max_iter: int = 60):
         self.train()
@@ -241,6 +321,12 @@ class StudentTRegression(nn.Module):
             return loss
 
         optimizer.step(closure)
+        self.fit_report_ = _lbfgs_fit_report(
+            optimizer, list(self.parameters()),
+            lambda: self.nll_loss(X_t, y_t),
+            lambda: self.unpenalized_nll(X_t, y_t),
+            lambda: F.softplus(self.raw_nu) + 2.1,
+        )
         self.eval()
         return self
 
