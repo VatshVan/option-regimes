@@ -64,6 +64,83 @@ def load_datasets():
     df_val = pd.read_csv(val_path)
     return df_dev, df_val
 
+def build_refit_inputs(
+    df_all: pd.DataFrame,
+    tau_m: int,
+    score_end: int,
+    K_regimes: int = 2,
+    start_train_idx: int = 0
+) -> Dict[str, Any]:
+    """
+    Builds everything fitted at refit origin tau_m: the HMM (emissions t in [start, tau_m],
+    forward-filtered through score_end - 1), the supervised training rows
+    (t <= tau_m - 2, valid_supervised_pair_all5), robust scalers fitted on those rows,
+    and the scaled design matrices for B2 (Q), B3 (X), B4 (QX) and R1 (QX + pi).
+    """
+    # 1. HMM Estimation Window: t in [start_train_idx, tau_m]
+    hmm_indices = np.arange(start_train_idx, tau_m + 1)
+
+    # Standardize HMM emissions
+    r_hist = df_all['r_1d'].iloc[hmm_indices].values
+    rv_hist = df_all['rv_20d'].iloc[hmm_indices].values
+    r_mean, r_std = float(np.mean(r_hist)), float(np.std(r_hist, ddof=1))
+    rv_mean, rv_std = float(np.mean(rv_hist)), float(np.std(rv_hist, ddof=1))
+
+    # Emission vector across all data up to score_end
+    eval_indices = np.arange(start_train_idx, score_end)
+    r_all_eval = df_all['r_1d'].iloc[eval_indices].values
+    rv_all_eval = df_all['rv_20d'].iloc[eval_indices].values
+    Y_eval = np.column_stack([(r_all_eval - r_mean) / r_std, (rv_all_eval - rv_mean) / rv_std])
+    Y_train = Y_eval[:len(hmm_indices)]
+
+    # Fit HMM
+    hmm = CausalGaussianHMM(n_states=K_regimes, max_iter=60, random_state=42)
+    hmm.fit(Y_train)
+
+    # Forward filter across eval_indices causally
+    pi_eval = hmm.forward_filter(Y_eval)
+
+    # 2. Supervised Training Set: t in [start_train_idx, tau_m - 2] with valid_supervised_pair_all5 == True
+    sup_tau = tau_m - 2
+    sup_cand_indices = np.arange(start_train_idx, sup_tau + 1)
+    sup_valid_mask = df_all['valid_supervised_pair_all5'].iloc[sup_cand_indices].values
+    train_sup_indices = sup_cand_indices[sup_valid_mask]
+
+    # Extract features and targets for training
+    y_train = df_all['target_y_next2'].iloc[train_sup_indices].values
+    rv_train = df_all['rv_20d'].iloc[train_sup_indices].values
+    Q_train_raw = df_all[Q_COLS].iloc[train_sup_indices].values
+    X_train_raw = df_all[X_COLS].iloc[train_sup_indices].values
+
+    # Scalers fit strictly on the supervised training rows (t <= tau_m - 2)
+    scaler_Q = RobustFeatureScaler().fit(Q_train_raw)
+    scaler_X = RobustFeatureScaler().fit(X_train_raw)
+
+    Q_train_scaled = scaler_Q.transform(Q_train_raw)
+    X_train_scaled = scaler_X.transform(X_train_raw)
+    QX_train_scaled = np.column_stack([Q_train_scaled, X_train_scaled])
+
+    # pi_t for training: align causal pi from pi_eval
+    train_pi_offsets = train_sup_indices - start_train_idx
+    pi_train = pi_eval[train_pi_offsets]
+    QXpi_train = np.column_stack([QX_train_scaled, pi_train])
+
+    return {
+        'hmm': hmm,
+        'pi_eval': pi_eval,
+        'hmm_indices': hmm_indices,
+        'sup_tau': sup_tau,
+        'train_sup_indices': train_sup_indices,
+        'y_train': y_train,
+        'rv_train': rv_train,
+        'scaler_Q': scaler_Q,
+        'scaler_X': scaler_X,
+        'Q_train_scaled': Q_train_scaled,
+        'X_train_scaled': X_train_scaled,
+        'QX_train_scaled': QX_train_scaled,
+        'QXpi_train': QXpi_train
+    }
+
 def run_walk_forward(
     df_all: pd.DataFrame,
     val_start_idx: int,
@@ -117,58 +194,19 @@ def run_walk_forward(
         if score_start >= score_end:
             continue
             
-        # 1. HMM Estimation & Feature Scaler Window: t in [start_train_idx, tau_m]
-        hmm_indices = np.arange(start_train_idx, tau_m + 1)
-        
-        # Standardize HMM emissions
-        r_hist = df_all['r_1d'].iloc[hmm_indices].values
-        rv_hist = df_all['rv_20d'].iloc[hmm_indices].values
-        r_mean, r_std = float(np.mean(r_hist)), float(np.std(r_hist, ddof=1))
-        rv_mean, rv_std = float(np.mean(rv_hist)), float(np.std(rv_hist, ddof=1))
-        
-        # Emission vector across all data up to score_end
-        eval_indices = np.arange(start_train_idx, score_end)
-        r_all_eval = df_all['r_1d'].iloc[eval_indices].values
-        rv_all_eval = df_all['rv_20d'].iloc[eval_indices].values
-        Y_eval = np.column_stack([(r_all_eval - r_mean) / r_std, (rv_all_eval - rv_mean) / rv_std])
-        Y_train = Y_eval[:len(hmm_indices)]
-        
-        # Fit HMM
-        hmm = CausalGaussianHMM(n_states=K_regimes, max_iter=60, random_state=42)
-        hmm.fit(Y_train)
-        
-        # Forward filter across eval_indices causally
-        pi_eval = hmm.forward_filter(Y_eval)
+        refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx)
+        hmm, pi_eval, hmm_indices = refit['hmm'], refit['pi_eval'], refit['hmm_indices']
+        sup_tau, train_sup_indices = refit['sup_tau'], refit['train_sup_indices']
+        y_train, rv_train = refit['y_train'], refit['rv_train']
+        scaler_Q, scaler_X = refit['scaler_Q'], refit['scaler_X']
+        Q_train_scaled, X_train_scaled = refit['Q_train_scaled'], refit['X_train_scaled']
+        QX_train_scaled, QXpi_train = refit['QX_train_scaled'], refit['QXpi_train']
+
         # Store filtered pi for the scoring window
         window_offset_start = score_start - start_train_idx
         window_offset_end = score_end - start_train_idx
         filtered_pi_all[score_start:score_end] = pi_eval[window_offset_start:window_offset_end]
-        
-        # 2. Supervised Training Set: t in [start_train_idx, tau_m - 2] with valid_supervised_pair_all5 == True
-        sup_tau = tau_m - 2
-        sup_cand_indices = np.arange(start_train_idx, sup_tau + 1)
-        sup_valid_mask = df_all['valid_supervised_pair_all5'].iloc[sup_cand_indices].values
-        train_sup_indices = sup_cand_indices[sup_valid_mask]
-        
-        # Extract features and targets for training
-        y_train = df_all['target_y_next2'].iloc[train_sup_indices].values
-        rv_train = df_all['rv_20d'].iloc[train_sup_indices].values
-        Q_train_raw = df_all[Q_COLS].iloc[train_sup_indices].values
-        X_train_raw = df_all[X_COLS].iloc[train_sup_indices].values
-        
-        # Scaler fit strictly on training complete-case features up to tau_m
-        scaler_Q = RobustFeatureScaler().fit(Q_train_raw)
-        scaler_X = RobustFeatureScaler().fit(X_train_raw)
-        
-        Q_train_scaled = scaler_Q.transform(Q_train_raw)
-        X_train_scaled = scaler_X.transform(X_train_raw)
-        QX_train_scaled = np.column_stack([Q_train_scaled, X_train_scaled])
-        
-        # pi_t for training: align causal pi from pi_eval
-        train_pi_offsets = train_sup_indices - start_train_idx
-        pi_train = pi_eval[train_pi_offsets]
-        QXpi_train = np.column_stack([QX_train_scaled, pi_train])
-        
+
         # 3. Fit Models
         # Model B0: Unconditional Gaussian
         m_b0 = ModelB0_UnconditionalGaussian().fit(y_train)

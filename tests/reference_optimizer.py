@@ -46,6 +46,18 @@ def objective_and_grad(theta, X, y, lam):
     return f, g
 
 
+def reference_log_density(theta, X, y):
+    """Per-row Student-t log density at parameters theta."""
+    from scipy import stats
+    X = np.asarray(X, dtype=np.float64)
+    d = X.shape[1]
+    rn, wm, bm, ws, bs = unpack(theta, d)
+    mu = X @ wm + bm
+    sig = softplus(X @ ws + bs) + SIGMA_MIN
+    nu = softplus(rn) + NU_MIN
+    return stats.t.logpdf(y, df=nu, loc=mu, scale=sig)
+
+
 def initial_theta(X, y):
     """Same starting point as StudentTRegression.fit."""
     d = X.shape[1]

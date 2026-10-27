@@ -125,7 +125,6 @@ def test_sigma_bounds_under_extreme_inputs():
     assert np.all(sig >= np.float32(m.sigma_min))
 
 
-@pytest.mark.xfail(strict=True, reason="float32: softplus(raw_nu)+2.1 rounds to 2.0999999 < 2.1 (fixed by float64 in Step 3)")
 def test_nu_lower_bound_under_extreme_inputs():
     _, (_, _, nu) = _extreme_input_predictions()
     assert np.all(nu >= 2.1)
@@ -161,7 +160,6 @@ def test_fit_report_fields(dev_design):
     assert r["nu"] == pytest.approx(float(m.predict(dev_design["Q"][:1])[2][0]))
 
 
-@pytest.mark.xfail(strict=True, reason="Root cause 1: torch LBFGS max_iter=60 float32 stops far from the optimum (handoff 1b)")
 def test_fit_reaches_reference_optimum(dev_design):
     m = StudentTRegression(in_features=11, l2_reg=LAM).fit(dev_design["QX"], dev_design["y"])
     f_ref, _ = reference_optimum(dev_design["QX"], dev_design["y"], LAM)
@@ -169,7 +167,6 @@ def test_fit_reaches_reference_optimum(dev_design):
     assert m.fit_report_["penalized_loss"] - f_ref < 1e-6
 
 
-@pytest.mark.xfail(strict=True, reason="Root cause 2: unequal optimisation error breaks nesting B4 >= B2, B3 (handoff 1c)")
 def test_nested_models_penalized_optimum(dev_design):
     y = dev_design["y"]
     f = {}
@@ -178,6 +175,36 @@ def test_nested_models_penalized_optimum(dev_design):
         f[name] = StudentTRegression(in_features=X.shape[1], l2_reg=LAM).fit(X, y).fit_report_["penalized_loss"]
     assert f["B4"] <= f["B2"] + 1e-7
     assert f["B4"] <= f["B3"] + 1e-7
+
+
+def test_preconditioning_leaves_objective_unchanged(dev_design):
+    X, y = dev_design["QX"], dev_design["y"]
+    m = StudentTRegression(in_features=11, l2_reg=LAM).fit(X, y)
+    with torch.no_grad():
+        f_module = float(m.nll_loss(torch.as_tensor(X), torch.as_tensor(y)))
+        f_unpen = float(m.unpenalized_nll(torch.as_tensor(X), torch.as_tensor(y)))
+    assert m.fit_report_["penalized_loss"] == pytest.approx(f_module, abs=1e-13)
+    assert m.fit_report_["unpenalized_nll"] == pytest.approx(f_unpen, abs=1e-13)
+    assert -m.log_density(X, y).mean() == pytest.approx(f_unpen, abs=1e-12)
+
+
+def test_non_convergence_is_flagged(dev_design):
+    with pytest.warns(RuntimeWarning, match="not converged"):
+        m = StudentTRegression(in_features=11, l2_reg=LAM).fit(
+            dev_design["QX"], dev_design["y"], max_iter=3, max_newton_steps=0)
+    assert m.fit_report_["converged"] is False
+    assert m.fit_report_["n_iter"] <= 3
+    assert m.fit_report_["max_abs_grad"] > m.fit_report_["grad_tol"]
+
+
+def test_newton_polish_completes_truncated_lbfgs(dev_design):
+    X, y = dev_design["QXpi"], dev_design["y"]
+    m = StudentTRegression(in_features=X.shape[1], l2_reg=LAM).fit(X, y, max_iter=30)
+    r = m.fit_report_
+    f_ref, _ = reference_optimum(X, y, LAM)
+    assert r["lbfgs_max_abs_grad"] > 1e-6  # L-BFGS alone was stopped far from converged
+    assert r["newton_steps"] > 0 and r["converged"] and r["hessian_positive_definite"]
+    assert abs(r["penalized_loss"] - f_ref) < 1e-12
 
 
 def test_reference_optimum_respects_nesting(dev_design):
@@ -207,13 +234,14 @@ def _synthetic_walk_forward_frame(n_dev=400, n_val=84, seed=7):
     vol[n_dev:] *= 2.0  # B0's expanding sigma moves materially between validation blocks
     r = vol * rng.standard_normal(n)
     df = pd.DataFrame({"date": pd.bdate_range("2015-01-01", periods=n).strftime("%Y-%m-%d")})
+    # Independent features (well-conditioned design); r_1d and rv_20d drive the HMM
     for c in Q_COLS:
-        df[c] = vol * (1 + 0.1 * rng.standard_normal(n))
+        df[c] = rng.standard_normal(n)
     df["r_1d"] = r
     df["rv_20d"] = pd.Series(r).rolling(20, min_periods=1).std().fillna(0.01).values * math.sqrt(252)
     for c in X_COLS:
         if c not in df:
-            df[c] = vol * (1 + 0.1 * rng.standard_normal(n))
+            df[c] = rng.standard_normal(n)
     df["target_y_next2"] = vol * rng.standard_t(5, size=n)
     df["valid_supervised_pair_all5"] = True
     return df, n_dev
