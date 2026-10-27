@@ -112,7 +112,7 @@ VIX1D research (2024-2025) shows that 1-day implied volatility, after a risk-pre
   - `data_feasibility_audit.md` records that weekly options appear in the data around June/July 2012, when 30-day bracketing jumps to 95-100%, against 76.4% bracketing failure in 2010.
   - The same audit records that DTE = 0 expiry-day contracts are present, and that the later expansion of listings includes Monday/Wednesday and Tuesday/Thursday expiries.
   - `SPX_data_research.md` notes there is no `SPX`/`SPXW` root field and that AM and PM settlement are mixed, so the forward must come from put-call parity per expiry.
-  - Files: D:/IE612_Project/.claude/worktrees/fix-optimizer-calibration/data_feasibility_audit.md (lines 50, 137-138, 363-364); D:/IE612_Project/.claude/worktrees/fix-optimizer-calibration/SPX_data_research.md (lines 55, 141).
+  - Files: data_feasibility_audit.md (lines 50, 137-138, 363-364); SPX_data_research.md (lines 55, 141).
 - Cboe added Tuesday/Thursday SPXW expirations in 2022, making daily expiries available. — [Cboe](https://www.cboe.com/insights/posts/how-to-make-the-most-of-added-spxw-options-expirations/)
 
 ### Inferences

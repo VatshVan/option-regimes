@@ -1,7 +1,7 @@
 """
 paired_comparisons.py
 =====================
-Paired log-score comparisons between density models (CLAUDE_CODE_HANDOFF.md Section 3).
+Paired log-score comparisons between density models (the optimizer-audit notes Section 3).
 
 For models A (challenger) and B (comparator) scored on the same rows,
 d_t = log p_A(y_t) - log p_B(y_t); positive d favours A.

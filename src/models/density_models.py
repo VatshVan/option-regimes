@@ -418,7 +418,7 @@ class StudentTRegression(nn.Module):
     Fitting is in float64. The location parameters are optimised as phi = theta_mu / s with
     s = sd(y_train): the objective is unchanged, but the mu-curvature (~1/sigma^2 ~ 1e4) is
     rescaled to O(1), which removes the ~1e8 Hessian condition number that stopped the
-    original 60-iteration float32 L-BFGS far from the optimum (CLAUDE_CODE_HANDOFF.md 1b).
+    original 60-iteration float32 L-BFGS far from the optimum (the optimizer-audit notes 1b).
     """
     def __init__(self, in_features: int, l2_reg: float = 1e-3, sigma_min: float = 1e-4):
         super().__init__()

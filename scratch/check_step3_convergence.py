@@ -5,7 +5,7 @@ Step 3 (fix/optimizer-calibration) acceptance check for the float64 / preconditi
 StudentTRegression fit. Development and validation data only; writes one JSON report.
 
 For the in-sample development fit and the six representative validation refits
-(CLAUDE_CODE_HANDOFF.md Section 5, tau = 2515 + 21k, k in {0, 3, 6, 12, 18, 23}),
+(the optimizer-audit notes Section 5, tau = 2515 + 21k, k in {0, 3, 6, 12, 18, 23}),
 for each of B2, B3, B4, R1:
   1. gap of the penalised objective to an independent SciPy float64 optimum (< 1e-6)
   2. three random starts (natural-scale perturbations, see random_start_fit): objective

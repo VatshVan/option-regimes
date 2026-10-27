@@ -1,6 +1,6 @@
 # Step 6 decision rule — sigma-extrapolation controls (pre-declared)
 
-**Status:** proposed by Claude and approved by the user on 2026-10-28, and committed
+**Status:** proposed and approved on 2026-10-28, and committed
 before any Step 6 control was run. Validation data (2020–2021) only; the 2022–2023
 test file is not loaded.
 

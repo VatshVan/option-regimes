@@ -1,6 +1,6 @@
 """
 Independent float64 reference optimum for the StudentTRegression objective
-(CLAUDE_CODE_HANDOFF.md Section 5). Uses SciPy L-BFGS-B with an analytic
+(the optimizer-audit notes Section 5). Uses SciPy L-BFGS-B with an analytic
 gradient and no torch, so it can audit the torch optimizer.
 theta = [raw_nu, w_mu (d), b_mu, w_sig (d), b_sig]
 """

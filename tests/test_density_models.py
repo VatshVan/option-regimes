@@ -3,7 +3,7 @@ Unit tests for src/models/density_models.py and the evaluation path in
 src/models/walk_forward_pipeline.py.
 
 Tests marked xfail(strict=True) document confirmed defects in the current code
-(CLAUDE_CODE_HANDOFF.md Sections 1b, 1e). They must start passing once the
+(the optimizer-audit notes Sections 1b, 1e). They must start passing once the
 corresponding fix lands, at which point strict xfail fails and the marker
 must be removed.
 """
