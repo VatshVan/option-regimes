@@ -30,7 +30,7 @@ import math
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 
 from src.models.density_models import (
     RobustFeatureScaler,
@@ -70,14 +70,25 @@ def build_refit_inputs(
     tau_m: int,
     score_end: int,
     K_regimes: int = 2,
-    start_train_idx: int = 0
+    start_train_idx: int = 0,
+    q_cols: Optional[List[str]] = None,
+    r1_pi_states: Optional[List[int]] = None,
+    clip_quantiles: Optional[Tuple[float, float]] = None
 ) -> Dict[str, Any]:
     """
     Builds everything fitted at refit origin tau_m: the HMM (emissions t in [start, tau_m],
     forward-filtered through score_end - 1), the supervised training rows
     (t <= tau_m - 2, valid_supervised_pair_all5), robust scalers fitted on those rows,
     and the scaled design matrices for B2 (Q), B3 (X), B4 (QX) and R1 (QX + pi).
+
+    Options (Step 6 controls; defaults reproduce the primary design):
+    q_cols: option-implied columns used by B2/B4/R1 (default Q_COLS).
+    r1_pi_states: filtered-probability columns appended for R1 (default: all K).
+    clip_quantiles: if given, per-feature [lo, hi] quantiles of the scaled training
+        features, returned as clip bounds for build_scoring_inputs (training rows are not clipped).
     """
+    q_cols = list(Q_COLS if q_cols is None else q_cols)
+    r1_pi_states = list(range(K_regimes) if r1_pi_states is None else r1_pi_states)
     # 1. HMM Estimation Window: t in [start_train_idx, tau_m]
     hmm_indices = np.arange(start_train_idx, tau_m + 1)
 
@@ -110,7 +121,7 @@ def build_refit_inputs(
     # Extract features and targets for training
     y_train = df_all['target_y_next2'].iloc[train_sup_indices].values
     rv_train = df_all['rv_20d'].iloc[train_sup_indices].values
-    Q_train_raw = df_all[Q_COLS].iloc[train_sup_indices].values
+    Q_train_raw = df_all[q_cols].iloc[train_sup_indices].values
     X_train_raw = df_all[X_COLS].iloc[train_sup_indices].values
 
     # Scalers fit strictly on the supervised training rows (t <= tau_m - 2)
@@ -123,10 +134,22 @@ def build_refit_inputs(
 
     # pi_t for training: align causal pi from pi_eval
     train_pi_offsets = train_sup_indices - start_train_idx
-    pi_train = pi_eval[train_pi_offsets]
+    pi_train = pi_eval[train_pi_offsets][:, r1_pi_states]
     QXpi_train = np.column_stack([QX_train_scaled, pi_train])
 
+    clip_bounds = None
+    if clip_quantiles is not None:
+        lo, hi = clip_quantiles
+        clip_bounds = {
+            'Q': (np.quantile(Q_train_scaled, lo, axis=0), np.quantile(Q_train_scaled, hi, axis=0)),
+            'X': (np.quantile(X_train_scaled, lo, axis=0), np.quantile(X_train_scaled, hi, axis=0)),
+        }
+
     return {
+        'q_cols': q_cols,
+        'r1_pi_states': r1_pi_states,
+        'clip_bounds': clip_bounds,
+        'start_train_idx': start_train_idx,
         'hmm': hmm,
         'pi_eval': pi_eval,
         'hmm_indices': hmm_indices,
@@ -142,6 +165,22 @@ def build_refit_inputs(
         'QXpi_train': QXpi_train
     }
 
+def build_scoring_inputs(df_all: pd.DataFrame, refit: Dict[str, Any], score_indices: np.ndarray) -> Dict[str, np.ndarray]:
+    """
+    Scaled scoring-time design matrices for B2/B3/B4/R1 using the frozen refit scalers,
+    the refit's Q columns and pi states, and (if set) its training-quantile clip bounds.
+    """
+    Q = refit['scaler_Q'].transform(df_all[refit['q_cols']].iloc[score_indices].values)
+    X = refit['scaler_X'].transform(df_all[X_COLS].iloc[score_indices].values)
+    n_clipped = 0
+    if refit['clip_bounds'] is not None:
+        (q_lo, q_hi), (x_lo, x_hi) = refit['clip_bounds']['Q'], refit['clip_bounds']['X']
+        n_clipped = int(np.sum((Q < q_lo) | (Q > q_hi)) + np.sum((X < x_lo) | (X > x_hi)))
+        Q, X = np.clip(Q, q_lo, q_hi), np.clip(X, x_lo, x_hi)
+    QX = np.column_stack([Q, X])
+    pi = refit['pi_eval'][np.asarray(score_indices) - refit['start_train_idx']][:, refit['r1_pi_states']]
+    return {'Q': Q, 'X': X, 'QX': QX, 'QXpi': np.column_stack([QX, pi]), 'n_clipped': n_clipped}
+
 def run_walk_forward(
     df_all: pd.DataFrame,
     val_start_idx: int,
@@ -149,13 +188,17 @@ def run_walk_forward(
     lambda_reg: float = 1e-3,
     start_train_idx: int = 0,
     block_size: int = 21,
-    include_mdn: bool = False
+    include_mdn: bool = False,
+    q_cols: Optional[List[str]] = None,
+    r1_pi_states: Optional[List[int]] = None,
+    clip_quantiles: Optional[Tuple[float, float]] = None
 ) -> Dict[str, Any]:
     """
     Executes expanding-window walk-forward refits across the validation partition.
     df_all: combined DataFrame (Dev + Val)
     val_start_idx: row index where Validation begins (2516)
     start_train_idx: row index where training begins (0 for full, 629 for mid-2012 sensitivity)
+    q_cols, r1_pi_states, clip_quantiles: Step 6 controls, see build_refit_inputs.
     """
     N_total = len(df_all)
     val_end_idx = N_total
@@ -195,11 +238,11 @@ def run_walk_forward(
         if score_start >= score_end:
             continue
             
-        refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx)
+        refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx,
+                                   q_cols=q_cols, r1_pi_states=r1_pi_states, clip_quantiles=clip_quantiles)
         hmm, pi_eval, hmm_indices = refit['hmm'], refit['pi_eval'], refit['hmm_indices']
         sup_tau, train_sup_indices = refit['sup_tau'], refit['train_sup_indices']
         y_train, rv_train = refit['y_train'], refit['rv_train']
-        scaler_Q, scaler_X = refit['scaler_Q'], refit['scaler_X']
         Q_train_scaled, X_train_scaled = refit['Q_train_scaled'], refit['X_train_scaled']
         QX_train_scaled, QXpi_train = refit['QX_train_scaled'], refit['QXpi_train']
 
@@ -215,37 +258,32 @@ def run_walk_forward(
         # Model B1: Trailing RV Location-Scale Student-t
         m_b1 = ModelB1_RVLocationScaleStudentT().fit(rv_train, y_train)
         
-        # Model B2: Q-Only Student-t Regression (d=5)
-        m_b2 = StudentTRegression(in_features=5, l2_reg=lambda_reg).fit(Q_train_scaled, y_train)
-        
+        # Model B2: Q-Only Student-t Regression (d=5 in the primary design)
+        m_b2 = StudentTRegression(in_features=Q_train_scaled.shape[1], l2_reg=lambda_reg).fit(Q_train_scaled, y_train)
+
         # Model B3: X-Only Student-t Regression (d=6)
-        m_b3 = StudentTRegression(in_features=6, l2_reg=lambda_reg).fit(X_train_scaled, y_train)
-        
-        # Model B4: Combined Non-Regime Primary Baseline (d=11)
-        m_b4 = StudentTRegression(in_features=11, l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
-        
-        # Model R1: Matched Latent Regime Challenger (d=11+K)
-        m_r1 = StudentTRegression(in_features=11 + K_regimes, l2_reg=lambda_reg).fit(QXpi_train, y_train)
-        
+        m_b3 = StudentTRegression(in_features=X_train_scaled.shape[1], l2_reg=lambda_reg).fit(X_train_scaled, y_train)
+
+        # Model B4: Combined Non-Regime Primary Baseline (d=11 in the primary design)
+        m_b4 = StudentTRegression(in_features=QX_train_scaled.shape[1], l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
+
+        # Model R1: Matched Latent Regime Challenger (d=11+K in the primary design)
+        m_r1 = StudentTRegression(in_features=QXpi_train.shape[1], l2_reg=lambda_reg).fit(QXpi_train, y_train)
+
         # Optional MDN check
         m_mdn = None
         if include_mdn:
-            m_mdn = MixtureDensityNetwork2(in_features=11, l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
-            
+            m_mdn = MixtureDensityNetwork2(in_features=QX_train_scaled.shape[1], l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
+
         # 4. Out-of-Sample Prediction for Block [score_start, score_end)
         score_indices = np.arange(score_start, score_end)
         rv_score = df_all['rv_20d'].iloc[score_indices].values
         y_score = df_all['target_y_next2'].iloc[score_indices].values
-        
-        # Transform features using frozen scalers from tau_m
-        Q_score_raw = df_all[Q_COLS].iloc[score_indices].values
-        X_score_raw = df_all[X_COLS].iloc[score_indices].values
-        Q_score_scaled = scaler_Q.transform(Q_score_raw)
-        X_score_scaled = scaler_X.transform(X_score_raw)
-        QX_score_scaled = np.column_stack([Q_score_scaled, X_score_scaled])
-        
-        pi_score = filtered_pi_all[score_indices]
-        QXpi_score = np.column_stack([QX_score_scaled, pi_score])
+
+        # Transform features using frozen scalers (and optional clip bounds) from tau_m
+        score_inputs = build_scoring_inputs(df_all, refit, score_indices)
+        Q_score_scaled, X_score_scaled = score_inputs['Q'], score_inputs['X']
+        QX_score_scaled, QXpi_score = score_inputs['QX'], score_inputs['QXpi']
         
         # Generate predictions
         # B0
@@ -324,6 +362,7 @@ def run_walk_forward(
                 'score_dates': f"{df_all['date'].iloc[score_start]} to {df_all['date'].iloc[score_end - 1]}",
                 'n_scored': int(score_end - score_start)
             },
+            'n_scoring_feature_values_clipped': int(score_inputs['n_clipped']),
             'hmm_n_iter': int(hmm.n_iter_),
             'hmm_converged': bool(hmm.converged_),
             'hmm_final_log_lik': float(hmm.log_lik_history_[-1]),
