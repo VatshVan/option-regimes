@@ -74,7 +74,8 @@ def build_refit_inputs(
     q_cols: Optional[List[str]] = None,
     r1_pi_states: Optional[List[int]] = None,
     clip_quantiles: Optional[Tuple[float, float]] = None,
-    pi_ablation: Optional[str] = None
+    pi_ablation: Optional[str] = None,
+    exclude_train_dates: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Builds everything fitted at refit origin tau_m: the HMM (emissions t in [start, tau_m],
@@ -94,6 +95,8 @@ def build_refit_inputs(
             (rows tau_m + 1 ... score_end - 1) permuted within the block; rng seeded with tau_m.
         'rv_median': pi_1 = 1(rv_20d > median rv_20d of the supervised training rows),
             pi_0 = 1 - pi_1 (K = 2 only).
+    exclude_train_dates: origin dates removed from the supervised training rows (e.g. the
+        Gate D strict-isolation sensitivity); HMM emissions are unchanged.
     """
     q_cols = list(Q_COLS if q_cols is None else q_cols)
     r1_pi_states = list(range(K_regimes) if r1_pi_states is None else r1_pi_states)
@@ -124,6 +127,8 @@ def build_refit_inputs(
     sup_tau = tau_m - 2
     sup_cand_indices = np.arange(start_train_idx, sup_tau + 1)
     sup_valid_mask = df_all['valid_supervised_pair_all5'].iloc[sup_cand_indices].values
+    if exclude_train_dates:
+        sup_valid_mask = sup_valid_mask & ~np.isin(df_all['date'].iloc[sup_cand_indices].values, exclude_train_dates)
     train_sup_indices = sup_cand_indices[sup_valid_mask]
 
     # Extract features and targets for training
@@ -217,14 +222,15 @@ def run_walk_forward(
     q_cols: Optional[List[str]] = None,
     r1_pi_states: Optional[List[int]] = None,
     clip_quantiles: Optional[Tuple[float, float]] = None,
-    pi_ablation: Optional[str] = None
+    pi_ablation: Optional[str] = None,
+    exclude_train_dates: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Executes expanding-window walk-forward refits across the validation partition.
     df_all: combined DataFrame (Dev + Val)
     val_start_idx: row index where Validation begins (2516)
     start_train_idx: row index where training begins (0 for full, 629 for mid-2012 sensitivity)
-    q_cols, r1_pi_states, clip_quantiles, pi_ablation: Step 6/7 controls, see build_refit_inputs.
+    q_cols, r1_pi_states, clip_quantiles, pi_ablation, exclude_train_dates: see build_refit_inputs.
     """
     N_total = len(df_all)
     val_end_idx = N_total
@@ -266,7 +272,7 @@ def run_walk_forward(
             
         refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx,
                                    q_cols=q_cols, r1_pi_states=r1_pi_states, clip_quantiles=clip_quantiles,
-                                   pi_ablation=pi_ablation)
+                                   pi_ablation=pi_ablation, exclude_train_dates=exclude_train_dates)
         hmm, pi_eval, hmm_indices = refit['hmm'], refit['pi_eval'], refit['hmm_indices']
         sup_tau, train_sup_indices = refit['sup_tau'], refit['train_sup_indices']
         y_train, rv_train = refit['y_train'], refit['rv_train']
