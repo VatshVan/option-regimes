@@ -2,7 +2,7 @@
 evaluation_metrics.py
 =====================
 Statistical evaluation metrics for physical return density forecasting.
-Governing specification: stage5_modeling_specification.md Section 7.
+Governing specification: docs/stage5_modeling_specification.md Section 7.
 
 Metrics:
 - Negative Log-Likelihood (NLL)

@@ -2,7 +2,7 @@
 hmm_filter.py
 =============
 Causal Hidden Markov Model (HMM) with continuous Gaussian emissions for regime filtering.
-Governing specification: stage5_modeling_specification.md Section 5.
+Governing specification: docs/stage5_modeling_specification.md Section 5.
 
 Features:
 - Bivariate emission vector: y_t = [std_return, std_RV20d]^T

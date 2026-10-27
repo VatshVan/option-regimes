@@ -4,8 +4,8 @@ walk_forward_pipeline.py
 Execution engine for Stage 7 walk-forward model fitting, hyperparameter tuning,
 and statistical evaluation.
 Governing specifications:
-- stage5_modeling_specification.md Sections 4, 5, 6, 7.
-- gate_b_audit_report.md Section 9 (User-Authorized Decisions).
+- docs/stage5_modeling_specification.md Sections 4, 5, 6, 7.
+- docs/gate_b_audit_report.md Section 9 (User-Authorized Decisions).
 
 Key Principles:
 1. Operational estimand y_t = ln(S_{t+2} / S_{t+1}) (Proposal A).
@@ -88,7 +88,7 @@ def build_refit_inputs(
     r1_pi_states: filtered-probability columns appended for R1 (default: all K).
     clip_quantiles: if given, per-feature [lo, hi] quantiles of the scaled training
         features, returned as clip bounds for build_scoring_inputs (training rows are not clipped).
-    pi_ablation: R1's regime inputs (research_protocol.md section 7.2), returned as 'pi_r1';
+    pi_ablation: R1's regime inputs (docs/research_protocol.md section 7.2), returned as 'pi_r1';
         'pi_eval' always holds the true filtered probabilities.
         None: filtered HMM probabilities.
         'shuffle': training-row pi permuted across dates; scoring-block pi

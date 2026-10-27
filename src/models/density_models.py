@@ -3,7 +3,7 @@ density_models.py
 =================
 Implementation of physical return density forecasting models (B0 - B4 and R1)
 and 2-component Mixture Density Network (MDN) fallback comparator.
-Governing specification: stage5_modeling_specification.md Section 4.
+Governing specification: docs/stage5_modeling_specification.md Section 4.
 
 Models:
 - RobustScaler: Training-only robust median/IQR feature scaler.
