@@ -73,7 +73,8 @@ def build_refit_inputs(
     start_train_idx: int = 0,
     q_cols: Optional[List[str]] = None,
     r1_pi_states: Optional[List[int]] = None,
-    clip_quantiles: Optional[Tuple[float, float]] = None
+    clip_quantiles: Optional[Tuple[float, float]] = None,
+    pi_ablation: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Builds everything fitted at refit origin tau_m: the HMM (emissions t in [start, tau_m],
@@ -81,11 +82,18 @@ def build_refit_inputs(
     (t <= tau_m - 2, valid_supervised_pair_all5), robust scalers fitted on those rows,
     and the scaled design matrices for B2 (Q), B3 (X), B4 (QX) and R1 (QX + pi).
 
-    Options (Step 6 controls; defaults reproduce the primary design):
+    Options (Step 6/7 controls; defaults reproduce the primary design):
     q_cols: option-implied columns used by B2/B4/R1 (default Q_COLS).
     r1_pi_states: filtered-probability columns appended for R1 (default: all K).
     clip_quantiles: if given, per-feature [lo, hi] quantiles of the scaled training
         features, returned as clip bounds for build_scoring_inputs (training rows are not clipped).
+    pi_ablation: R1's regime inputs (research_protocol.md section 7.2), returned as 'pi_r1';
+        'pi_eval' always holds the true filtered probabilities.
+        None: filtered HMM probabilities.
+        'shuffle': training-row pi permuted across dates; scoring-block pi
+            (rows tau_m + 1 ... score_end - 1) permuted within the block; rng seeded with tau_m.
+        'rv_median': pi_1 = 1(rv_20d > median rv_20d of the supervised training rows),
+            pi_0 = 1 - pi_1 (K = 2 only).
     """
     q_cols = list(Q_COLS if q_cols is None else q_cols)
     r1_pi_states = list(range(K_regimes) if r1_pi_states is None else r1_pi_states)
@@ -132,9 +140,24 @@ def build_refit_inputs(
     X_train_scaled = scaler_X.transform(X_train_raw)
     QX_train_scaled = np.column_stack([Q_train_scaled, X_train_scaled])
 
-    # pi_t for training: align causal pi from pi_eval
+    # pi_t for training: align causal pi (or its ablation) with the supervised rows
     train_pi_offsets = train_sup_indices - start_train_idx
-    pi_train = pi_eval[train_pi_offsets][:, r1_pi_states]
+    if pi_ablation is None:
+        pi_r1 = pi_eval
+    elif pi_ablation == 'shuffle':
+        rng = np.random.default_rng(tau_m)
+        pi_r1 = pi_eval.copy()
+        pi_r1[train_pi_offsets] = pi_eval[rng.permutation(train_pi_offsets)]
+        score_offsets = np.arange(tau_m + 1, score_end) - start_train_idx
+        if len(score_offsets):
+            pi_r1[score_offsets] = pi_eval[rng.permutation(score_offsets)]
+    elif pi_ablation == 'rv_median':
+        assert K_regimes == 2, "rv_median ablation is defined for K = 2"
+        high = (rv_all_eval > np.median(rv_train)).astype(np.float64)
+        pi_r1 = np.column_stack([1.0 - high, high])
+    else:
+        raise ValueError(f"unknown pi_ablation {pi_ablation!r}")
+    pi_train = pi_r1[train_pi_offsets][:, r1_pi_states]
     QXpi_train = np.column_stack([QX_train_scaled, pi_train])
 
     clip_bounds = None
@@ -152,6 +175,8 @@ def build_refit_inputs(
         'start_train_idx': start_train_idx,
         'hmm': hmm,
         'pi_eval': pi_eval,
+        'pi_ablation': pi_ablation,
+        'pi_r1': pi_r1,
         'hmm_indices': hmm_indices,
         'sup_tau': sup_tau,
         'train_sup_indices': train_sup_indices,
@@ -178,7 +203,7 @@ def build_scoring_inputs(df_all: pd.DataFrame, refit: Dict[str, Any], score_indi
         n_clipped = int(np.sum((Q < q_lo) | (Q > q_hi)) + np.sum((X < x_lo) | (X > x_hi)))
         Q, X = np.clip(Q, q_lo, q_hi), np.clip(X, x_lo, x_hi)
     QX = np.column_stack([Q, X])
-    pi = refit['pi_eval'][np.asarray(score_indices) - refit['start_train_idx']][:, refit['r1_pi_states']]
+    pi = refit['pi_r1'][np.asarray(score_indices) - refit['start_train_idx']][:, refit['r1_pi_states']]
     return {'Q': Q, 'X': X, 'QX': QX, 'QXpi': np.column_stack([QX, pi]), 'n_clipped': n_clipped}
 
 def run_walk_forward(
@@ -191,14 +216,15 @@ def run_walk_forward(
     include_mdn: bool = False,
     q_cols: Optional[List[str]] = None,
     r1_pi_states: Optional[List[int]] = None,
-    clip_quantiles: Optional[Tuple[float, float]] = None
+    clip_quantiles: Optional[Tuple[float, float]] = None,
+    pi_ablation: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Executes expanding-window walk-forward refits across the validation partition.
     df_all: combined DataFrame (Dev + Val)
     val_start_idx: row index where Validation begins (2516)
     start_train_idx: row index where training begins (0 for full, 629 for mid-2012 sensitivity)
-    q_cols, r1_pi_states, clip_quantiles: Step 6 controls, see build_refit_inputs.
+    q_cols, r1_pi_states, clip_quantiles, pi_ablation: Step 6/7 controls, see build_refit_inputs.
     """
     N_total = len(df_all)
     val_end_idx = N_total
@@ -239,7 +265,8 @@ def run_walk_forward(
             continue
             
         refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx,
-                                   q_cols=q_cols, r1_pi_states=r1_pi_states, clip_quantiles=clip_quantiles)
+                                   q_cols=q_cols, r1_pi_states=r1_pi_states, clip_quantiles=clip_quantiles,
+                                   pi_ablation=pi_ablation)
         hmm, pi_eval, hmm_indices = refit['hmm'], refit['pi_eval'], refit['hmm_indices']
         sup_tau, train_sup_indices = refit['sup_tau'], refit['train_sup_indices']
         y_train, rv_train = refit['y_train'], refit['rv_train']

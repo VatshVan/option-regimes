@@ -50,3 +50,22 @@ def test_q_column_subset_and_pi_state_selection(dev_df):
     assert r["Q_train_scaled"].shape[1] == 4 and r["QXpi_train"].shape[1] == 4 + 6 + 1
     np.testing.assert_array_equal(r["QXpi_train"][:, -1], r["pi_eval"][r["train_sup_indices"], 1])
     assert s["QXpi"].shape[1] == 11
+
+
+def test_pi_ablations(dev_df):
+    tau, end = 2000, 2022
+    base = build_refit_inputs(dev_df, tau, end)
+    sh = build_refit_inputs(dev_df, tau, end, pi_ablation="shuffle")
+    rv = build_refit_inputs(dev_df, tau, end, pi_ablation="rv_median")
+    tr = base["train_sup_indices"]
+    sc = np.arange(tau + 1, end)
+    np.testing.assert_array_equal(sh["pi_eval"], base["pi_eval"])  # true filter output untouched
+    for rows in (tr, sc):  # permutation within training rows and within the scoring block
+        assert not np.array_equal(sh["pi_r1"][rows], base["pi_eval"][rows])
+        np.testing.assert_array_equal(np.sort(sh["pi_r1"][rows, 1]), np.sort(base["pi_eval"][rows, 1]))
+    np.testing.assert_array_equal(sh["QXpi_train"][:, -2:], sh["pi_r1"][tr])
+    thr = np.median(dev_df["rv_20d"].values[tr])
+    np.testing.assert_array_equal(rv["pi_r1"][:, 1], (dev_df["rv_20d"].values[:end] > thr).astype(float))
+    np.testing.assert_array_equal(rv["pi_r1"].sum(axis=1), 1.0)
+    s = build_scoring_inputs(dev_df, rv, sc)
+    np.testing.assert_array_equal(s["QXpi"][:, -1], rv["pi_r1"][sc, 1])
