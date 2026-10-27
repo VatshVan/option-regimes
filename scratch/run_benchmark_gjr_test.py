@@ -69,7 +69,9 @@ def main():
         base = pd.read_csv(path)
         idx = np.array([pos[d] for d in base["date"]])
         y = base["target_y"].values
-        assert np.allclose(y, r[idx + 2]), "target is not r_{t+2}"
+        # the last two origins' targets use 2024 closes (beyond the return series); check the rest
+        inside = idx + 2 < n
+        assert inside.sum() >= len(idx) - 2 and np.allclose(y[inside], r[idx[inside] + 2]), "target is not r_{t+2}"
         expected_block = np.array([next(b for b, (tau, s, e) in windows.items() if s <= i < e) for i in idx])
         assert np.array_equal(expected_block, base["block"].values), "refit blocks differ from Step 8"
         dates, blocks = base["date"].values, base["block"].values
