@@ -127,7 +127,8 @@ def diebold_mariano_test(d: np.ndarray, max_lag: int = None) -> dict:
         "p_value_two_sided": float(p_value_two_sided)
     }
 
-def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block_len: int = 5, seed: int = 42) -> dict:
+def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block_len: int = 5, seed: int = 42,
+                               return_draws: bool = False) -> dict:
     """
     Politis & Romano (1994) stationary block bootstrap for loss differential d_t.
     Computes 95% bootstrap confidence interval.
@@ -155,5 +156,6 @@ def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block
         "boot_mean": float(np.mean(boot_means)),
         "ci_95_lower": ci_lower,
         "ci_95_upper": ci_upper,
-        "excludes_zero": bool(ci_lower > 0.0 or ci_upper < 0.0)
+        "excludes_zero": bool(ci_lower > 0.0 or ci_upper < 0.0),
+        **({"draws": boot_means} if return_draws else {})
     }
