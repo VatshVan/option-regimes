@@ -452,14 +452,13 @@ def fig_forecasts(D):
 def fig_tests(D, R):
     v, t = D["vclip"], D["tclip"]
     tp = t[t["date"] != "2022-01-03"].reset_index(drop=True)
-    tprim = (t["date"] != "2022-01-03").values
     rv, rt = R["val"], R["test"]
 
     # 21 log score vs GJR, by setting
     settings = [("validation raw", {m: v[f"{m}_log_p"].values for m in MODELS}),
                 ("validation recalibrated", {m: rv[m]["log_p"] for m in MODELS}),
                 ("test raw", {m: tp[f"{m}_log_p"].values for m in MODELS}),
-                ("test recalibrated", {m: rt[m]["log_p"][tprim] for m in MODELS})]
+                ("test recalibrated", {m: rt[m]["log_p"] for m in MODELS})]
     ms_ = ["B1", "B2", "B3", "B4", "R1"]
     fig, axes = plt.subplots(1, 4, figsize=(14, 4.4), sharey=True)
     for ax, (nm, lp) in zip(axes, settings):
@@ -533,7 +532,7 @@ def fig_tests(D, R):
             "val raw": summ(v[f"{a}_log_p"].values - v[f"{b}_log_p"].values),
             "val recal": summ(rv[a]["log_p"] - rv[b]["log_p"]),
             "test raw": summ(tp[f"{a}_log_p"].values - tp[f"{b}_log_p"].values),
-            "test recal": summ(rt[a]["log_p"][tprim] - rt[b]["log_p"][tprim]),
+            "test recal": summ(rt[a]["log_p"] - rt[b]["log_p"]),
         }
     R["summ"] = res
     styles = {"val raw": (INK, "o", True), "val recal": (INK, "o", False), "test raw": ("#e66767", "s", True), "test recal": ("#e66767", "s", False)}
@@ -941,7 +940,9 @@ def main():
     os.makedirs(GIF, exist_ok=True)
     D = load()
     print("recalibration ...")
-    R = {"val": recal_frame(D["vclip"], D["v_idx"], D["v_tau"]), "test": recal_frame(D["tclip"], D["t_idx"], D["t_tau"])}
+    prim = (D["tclip"]["date"] != "2022-01-03").values  # protocol: recalibrate on the primary N = 500 sample
+    R = {"val": recal_frame(D["vclip"], D["v_idx"], D["v_tau"]),
+         "test": recal_frame(D["tclip"][prim].reset_index(drop=True), D["t_idx"][prim], D["t_tau"])}
     print("A. data");
     fig_data(D)
     print("B. optimizer");
