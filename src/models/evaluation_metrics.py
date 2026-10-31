@@ -2,7 +2,7 @@
 evaluation_metrics.py
 =====================
 Statistical evaluation metrics for physical return density forecasting.
-Governing specification: stage5_modeling_specification.md Section 7.
+Governing specification: docs/stage5_modeling_specification.md Section 7.
 
 Metrics:
 - Negative Log-Likelihood (NLL)
@@ -66,8 +66,8 @@ def compute_pit_values_student_t(y: np.ndarray, mu: np.ndarray, sigma: np.ndarra
     """Computes PIT values u_t = F(y_t) for Student-t densities."""
     return stats.t.cdf(y, df=nu, loc=mu, scale=sigma)
 
-def compute_pit_values_gaussian(y: np.ndarray, mu: float, sigma: float) -> np.ndarray:
-    """Computes PIT values u_t = F(y_t) for Gaussian densities."""
+def compute_pit_values_gaussian(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray) -> np.ndarray:
+    """Computes PIT values u_t = F_t(y_t) for Gaussian densities (per-row mu_t, sigma_t; scalars broadcast)."""
     return stats.norm.cdf(y, loc=mu, scale=sigma)
 
 def compute_interval_coverage(y: np.ndarray, mu: np.ndarray, sigma: np.ndarray, nu: np.ndarray, nominal_coverages=[0.50, 0.80, 0.95]) -> dict:
@@ -127,7 +127,8 @@ def diebold_mariano_test(d: np.ndarray, max_lag: int = None) -> dict:
         "p_value_two_sided": float(p_value_two_sided)
     }
 
-def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block_len: int = 5, seed: int = 42) -> dict:
+def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block_len: int = 5, seed: int = 42,
+                               return_draws: bool = False) -> dict:
     """
     Politis & Romano (1994) stationary block bootstrap for loss differential d_t.
     Computes 95% bootstrap confidence interval.
@@ -155,5 +156,6 @@ def stationary_block_bootstrap(d: np.ndarray, n_boot: int = 2000, expected_block
         "boot_mean": float(np.mean(boot_means)),
         "ci_95_lower": ci_lower,
         "ci_95_upper": ci_upper,
-        "excludes_zero": bool(ci_lower > 0.0 or ci_upper < 0.0)
+        "excludes_zero": bool(ci_lower > 0.0 or ci_upper < 0.0),
+        **({"draws": boot_means} if return_draws else {})
     }

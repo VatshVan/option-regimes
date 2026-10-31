@@ -4,13 +4,14 @@ walk_forward_pipeline.py
 Execution engine for Stage 7 walk-forward model fitting, hyperparameter tuning,
 and statistical evaluation.
 Governing specifications:
-- stage5_modeling_specification.md Sections 4, 5, 6, 7.
-- gate_b_audit_report.md Section 9 (User-Authorized Decisions).
+- docs/stage5_modeling_specification.md Sections 4, 5, 6, 7.
+- docs/gate_b_audit_report.md Section 9 (User-Authorized Decisions).
 
 Key Principles:
 1. Operational estimand y_t = ln(S_{t+2} / S_{t+1}) (Proposal A).
 2. Label availability: Supervised models at refit origin tau_m use t <= tau_m - 2.
-3. Contemporaneous HMM emissions and scalers use t <= tau_m.
+3. Contemporaneous HMM emissions use t <= tau_m; feature scalers are fit on the
+   supervised training rows (t <= tau_m - 2).
 4. Complete-case filtering: origins with valid_Q_all5 == True.
 5. Partition boundary purity: targets crossing partitions are nulled.
 6. Hyperparameter tuning on validation: lambda in {1e-4, 1e-3, 1e-2}, K in {2, 3}.
@@ -29,7 +30,7 @@ import math
 import json
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 
 from src.models.density_models import (
     RobustFeatureScaler,
@@ -64,6 +65,152 @@ def load_datasets():
     df_val = pd.read_csv(val_path)
     return df_dev, df_val
 
+def build_refit_inputs(
+    df_all: pd.DataFrame,
+    tau_m: int,
+    score_end: int,
+    K_regimes: int = 2,
+    start_train_idx: int = 0,
+    q_cols: Optional[List[str]] = None,
+    r1_pi_states: Optional[List[int]] = None,
+    clip_quantiles: Optional[Tuple[float, float]] = None,
+    pi_ablation: Optional[str] = None,
+    exclude_train_dates: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Builds everything fitted at refit origin tau_m: the HMM (emissions t in [start, tau_m],
+    forward-filtered through score_end - 1), the supervised training rows
+    (t <= tau_m - 2, valid_supervised_pair_all5), robust scalers fitted on those rows,
+    and the scaled design matrices for B2 (Q), B3 (X), B4 (QX) and R1 (QX + pi).
+
+    Options (Step 6/7 controls; defaults reproduce the primary design):
+    q_cols: option-implied columns used by B2/B4/R1 (default Q_COLS).
+    r1_pi_states: filtered-probability columns appended for R1 (default: all K).
+    clip_quantiles: if given, per-feature [lo, hi] quantiles of the scaled training
+        features, returned as clip bounds for build_scoring_inputs (training rows are not clipped).
+    pi_ablation: R1's regime inputs (docs/research_protocol.md section 7.2), returned as 'pi_r1';
+        'pi_eval' always holds the true filtered probabilities.
+        None: filtered HMM probabilities.
+        'shuffle': training-row pi permuted across dates; scoring-block pi
+            (rows tau_m + 1 ... score_end - 1) permuted within the block; rng seeded with tau_m.
+        'rv_median': pi_1 = 1(rv_20d > median rv_20d of the supervised training rows),
+            pi_0 = 1 - pi_1 (K = 2 only).
+    exclude_train_dates: origin dates removed from the supervised training rows (e.g. the
+        Gate D strict-isolation sensitivity); HMM emissions are unchanged.
+    """
+    q_cols = list(Q_COLS if q_cols is None else q_cols)
+    r1_pi_states = list(range(K_regimes) if r1_pi_states is None else r1_pi_states)
+    # 1. HMM Estimation Window: t in [start_train_idx, tau_m]
+    hmm_indices = np.arange(start_train_idx, tau_m + 1)
+
+    # Standardize HMM emissions
+    r_hist = df_all['r_1d'].iloc[hmm_indices].values
+    rv_hist = df_all['rv_20d'].iloc[hmm_indices].values
+    r_mean, r_std = float(np.mean(r_hist)), float(np.std(r_hist, ddof=1))
+    rv_mean, rv_std = float(np.mean(rv_hist)), float(np.std(rv_hist, ddof=1))
+
+    # Emission vector across all data up to score_end
+    eval_indices = np.arange(start_train_idx, score_end)
+    r_all_eval = df_all['r_1d'].iloc[eval_indices].values
+    rv_all_eval = df_all['rv_20d'].iloc[eval_indices].values
+    Y_eval = np.column_stack([(r_all_eval - r_mean) / r_std, (rv_all_eval - rv_mean) / rv_std])
+    Y_train = Y_eval[:len(hmm_indices)]
+
+    # Fit HMM
+    hmm = CausalGaussianHMM(n_states=K_regimes, max_iter=60, random_state=42)
+    hmm.fit(Y_train)
+
+    # Forward filter across eval_indices causally
+    pi_eval = hmm.forward_filter(Y_eval)
+
+    # 2. Supervised Training Set: t in [start_train_idx, tau_m - 2] with valid_supervised_pair_all5 == True
+    sup_tau = tau_m - 2
+    sup_cand_indices = np.arange(start_train_idx, sup_tau + 1)
+    sup_valid_mask = df_all['valid_supervised_pair_all5'].iloc[sup_cand_indices].values
+    if exclude_train_dates:
+        sup_valid_mask = sup_valid_mask & ~np.isin(df_all['date'].iloc[sup_cand_indices].values, exclude_train_dates)
+    train_sup_indices = sup_cand_indices[sup_valid_mask]
+
+    # Extract features and targets for training
+    y_train = df_all['target_y_next2'].iloc[train_sup_indices].values
+    rv_train = df_all['rv_20d'].iloc[train_sup_indices].values
+    Q_train_raw = df_all[q_cols].iloc[train_sup_indices].values
+    X_train_raw = df_all[X_COLS].iloc[train_sup_indices].values
+
+    # Scalers fit strictly on the supervised training rows (t <= tau_m - 2)
+    scaler_Q = RobustFeatureScaler().fit(Q_train_raw)
+    scaler_X = RobustFeatureScaler().fit(X_train_raw)
+
+    Q_train_scaled = scaler_Q.transform(Q_train_raw)
+    X_train_scaled = scaler_X.transform(X_train_raw)
+    QX_train_scaled = np.column_stack([Q_train_scaled, X_train_scaled])
+
+    # pi_t for training: align causal pi (or its ablation) with the supervised rows
+    train_pi_offsets = train_sup_indices - start_train_idx
+    if pi_ablation is None:
+        pi_r1 = pi_eval
+    elif pi_ablation == 'shuffle':
+        rng = np.random.default_rng(tau_m)
+        pi_r1 = pi_eval.copy()
+        pi_r1[train_pi_offsets] = pi_eval[rng.permutation(train_pi_offsets)]
+        score_offsets = np.arange(tau_m + 1, score_end) - start_train_idx
+        if len(score_offsets):
+            pi_r1[score_offsets] = pi_eval[rng.permutation(score_offsets)]
+    elif pi_ablation == 'rv_median':
+        assert K_regimes == 2, "rv_median ablation is defined for K = 2"
+        high = (rv_all_eval > np.median(rv_train)).astype(np.float64)
+        pi_r1 = np.column_stack([1.0 - high, high])
+    else:
+        raise ValueError(f"unknown pi_ablation {pi_ablation!r}")
+    pi_train = pi_r1[train_pi_offsets][:, r1_pi_states]
+    QXpi_train = np.column_stack([QX_train_scaled, pi_train])
+
+    clip_bounds = None
+    if clip_quantiles is not None:
+        lo, hi = clip_quantiles
+        clip_bounds = {
+            'Q': (np.quantile(Q_train_scaled, lo, axis=0), np.quantile(Q_train_scaled, hi, axis=0)),
+            'X': (np.quantile(X_train_scaled, lo, axis=0), np.quantile(X_train_scaled, hi, axis=0)),
+        }
+
+    return {
+        'q_cols': q_cols,
+        'r1_pi_states': r1_pi_states,
+        'clip_bounds': clip_bounds,
+        'start_train_idx': start_train_idx,
+        'hmm': hmm,
+        'pi_eval': pi_eval,
+        'pi_ablation': pi_ablation,
+        'pi_r1': pi_r1,
+        'hmm_indices': hmm_indices,
+        'sup_tau': sup_tau,
+        'train_sup_indices': train_sup_indices,
+        'y_train': y_train,
+        'rv_train': rv_train,
+        'scaler_Q': scaler_Q,
+        'scaler_X': scaler_X,
+        'Q_train_scaled': Q_train_scaled,
+        'X_train_scaled': X_train_scaled,
+        'QX_train_scaled': QX_train_scaled,
+        'QXpi_train': QXpi_train
+    }
+
+def build_scoring_inputs(df_all: pd.DataFrame, refit: Dict[str, Any], score_indices: np.ndarray) -> Dict[str, np.ndarray]:
+    """
+    Scaled scoring-time design matrices for B2/B3/B4/R1 using the frozen refit scalers,
+    the refit's Q columns and pi states, and (if set) its training-quantile clip bounds.
+    """
+    Q = refit['scaler_Q'].transform(df_all[refit['q_cols']].iloc[score_indices].values)
+    X = refit['scaler_X'].transform(df_all[X_COLS].iloc[score_indices].values)
+    n_clipped = 0
+    if refit['clip_bounds'] is not None:
+        (q_lo, q_hi), (x_lo, x_hi) = refit['clip_bounds']['Q'], refit['clip_bounds']['X']
+        n_clipped = int(np.sum((Q < q_lo) | (Q > q_hi)) + np.sum((X < x_lo) | (X > x_hi)))
+        Q, X = np.clip(Q, q_lo, q_hi), np.clip(X, x_lo, x_hi)
+    QX = np.column_stack([Q, X])
+    pi = refit['pi_r1'][np.asarray(score_indices) - refit['start_train_idx']][:, refit['r1_pi_states']]
+    return {'Q': Q, 'X': X, 'QX': QX, 'QXpi': np.column_stack([QX, pi]), 'n_clipped': n_clipped}
+
 def run_walk_forward(
     df_all: pd.DataFrame,
     val_start_idx: int,
@@ -71,13 +218,19 @@ def run_walk_forward(
     lambda_reg: float = 1e-3,
     start_train_idx: int = 0,
     block_size: int = 21,
-    include_mdn: bool = False
+    include_mdn: bool = False,
+    q_cols: Optional[List[str]] = None,
+    r1_pi_states: Optional[List[int]] = None,
+    clip_quantiles: Optional[Tuple[float, float]] = None,
+    pi_ablation: Optional[str] = None,
+    exclude_train_dates: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Executes expanding-window walk-forward refits across the validation partition.
     df_all: combined DataFrame (Dev + Val)
     val_start_idx: row index where Validation begins (2516)
     start_train_idx: row index where training begins (0 for full, 629 for mid-2012 sensitivity)
+    q_cols, r1_pi_states, clip_quantiles, pi_ablation, exclude_train_dates: see build_refit_inputs.
     """
     N_total = len(df_all)
     val_end_idx = N_total
@@ -117,58 +270,20 @@ def run_walk_forward(
         if score_start >= score_end:
             continue
             
-        # 1. HMM Estimation & Feature Scaler Window: t in [start_train_idx, tau_m]
-        hmm_indices = np.arange(start_train_idx, tau_m + 1)
-        
-        # Standardize HMM emissions
-        r_hist = df_all['r_1d'].iloc[hmm_indices].values
-        rv_hist = df_all['rv_20d'].iloc[hmm_indices].values
-        r_mean, r_std = float(np.mean(r_hist)), float(np.std(r_hist, ddof=1))
-        rv_mean, rv_std = float(np.mean(rv_hist)), float(np.std(rv_hist, ddof=1))
-        
-        # Emission vector across all data up to score_end
-        eval_indices = np.arange(start_train_idx, score_end)
-        r_all_eval = df_all['r_1d'].iloc[eval_indices].values
-        rv_all_eval = df_all['rv_20d'].iloc[eval_indices].values
-        Y_eval = np.column_stack([(r_all_eval - r_mean) / r_std, (rv_all_eval - rv_mean) / rv_std])
-        Y_train = Y_eval[:len(hmm_indices)]
-        
-        # Fit HMM
-        hmm = CausalGaussianHMM(n_states=K_regimes, max_iter=60, random_state=42)
-        hmm.fit(Y_train)
-        
-        # Forward filter across eval_indices causally
-        pi_eval = hmm.forward_filter(Y_eval)
+        refit = build_refit_inputs(df_all, tau_m, score_end, K_regimes, start_train_idx,
+                                   q_cols=q_cols, r1_pi_states=r1_pi_states, clip_quantiles=clip_quantiles,
+                                   pi_ablation=pi_ablation, exclude_train_dates=exclude_train_dates)
+        hmm, pi_eval, hmm_indices = refit['hmm'], refit['pi_eval'], refit['hmm_indices']
+        sup_tau, train_sup_indices = refit['sup_tau'], refit['train_sup_indices']
+        y_train, rv_train = refit['y_train'], refit['rv_train']
+        Q_train_scaled, X_train_scaled = refit['Q_train_scaled'], refit['X_train_scaled']
+        QX_train_scaled, QXpi_train = refit['QX_train_scaled'], refit['QXpi_train']
+
         # Store filtered pi for the scoring window
         window_offset_start = score_start - start_train_idx
         window_offset_end = score_end - start_train_idx
         filtered_pi_all[score_start:score_end] = pi_eval[window_offset_start:window_offset_end]
-        
-        # 2. Supervised Training Set: t in [start_train_idx, tau_m - 2] with valid_supervised_pair_all5 == True
-        sup_tau = tau_m - 2
-        sup_cand_indices = np.arange(start_train_idx, sup_tau + 1)
-        sup_valid_mask = df_all['valid_supervised_pair_all5'].iloc[sup_cand_indices].values
-        train_sup_indices = sup_cand_indices[sup_valid_mask]
-        
-        # Extract features and targets for training
-        y_train = df_all['target_y_next2'].iloc[train_sup_indices].values
-        rv_train = df_all['rv_20d'].iloc[train_sup_indices].values
-        Q_train_raw = df_all[Q_COLS].iloc[train_sup_indices].values
-        X_train_raw = df_all[X_COLS].iloc[train_sup_indices].values
-        
-        # Scaler fit strictly on training complete-case features up to tau_m
-        scaler_Q = RobustFeatureScaler().fit(Q_train_raw)
-        scaler_X = RobustFeatureScaler().fit(X_train_raw)
-        
-        Q_train_scaled = scaler_Q.transform(Q_train_raw)
-        X_train_scaled = scaler_X.transform(X_train_raw)
-        QX_train_scaled = np.column_stack([Q_train_scaled, X_train_scaled])
-        
-        # pi_t for training: align causal pi from pi_eval
-        train_pi_offsets = train_sup_indices - start_train_idx
-        pi_train = pi_eval[train_pi_offsets]
-        QXpi_train = np.column_stack([QX_train_scaled, pi_train])
-        
+
         # 3. Fit Models
         # Model B0: Unconditional Gaussian
         m_b0 = ModelB0_UnconditionalGaussian().fit(y_train)
@@ -176,37 +291,32 @@ def run_walk_forward(
         # Model B1: Trailing RV Location-Scale Student-t
         m_b1 = ModelB1_RVLocationScaleStudentT().fit(rv_train, y_train)
         
-        # Model B2: Q-Only Student-t Regression (d=5)
-        m_b2 = StudentTRegression(in_features=5, l2_reg=lambda_reg).fit(Q_train_scaled, y_train)
-        
+        # Model B2: Q-Only Student-t Regression (d=5 in the primary design)
+        m_b2 = StudentTRegression(in_features=Q_train_scaled.shape[1], l2_reg=lambda_reg).fit(Q_train_scaled, y_train)
+
         # Model B3: X-Only Student-t Regression (d=6)
-        m_b3 = StudentTRegression(in_features=6, l2_reg=lambda_reg).fit(X_train_scaled, y_train)
-        
-        # Model B4: Combined Non-Regime Primary Baseline (d=11)
-        m_b4 = StudentTRegression(in_features=11, l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
-        
-        # Model R1: Matched Latent Regime Challenger (d=11+K)
-        m_r1 = StudentTRegression(in_features=11 + K_regimes, l2_reg=lambda_reg).fit(QXpi_train, y_train)
-        
+        m_b3 = StudentTRegression(in_features=X_train_scaled.shape[1], l2_reg=lambda_reg).fit(X_train_scaled, y_train)
+
+        # Model B4: Combined Non-Regime Primary Baseline (d=11 in the primary design)
+        m_b4 = StudentTRegression(in_features=QX_train_scaled.shape[1], l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
+
+        # Model R1: Matched Latent Regime Challenger (d=11+K in the primary design)
+        m_r1 = StudentTRegression(in_features=QXpi_train.shape[1], l2_reg=lambda_reg).fit(QXpi_train, y_train)
+
         # Optional MDN check
         m_mdn = None
         if include_mdn:
-            m_mdn = MixtureDensityNetwork2(in_features=11, l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
-            
+            m_mdn = MixtureDensityNetwork2(in_features=QX_train_scaled.shape[1], l2_reg=lambda_reg).fit(QX_train_scaled, y_train)
+
         # 4. Out-of-Sample Prediction for Block [score_start, score_end)
         score_indices = np.arange(score_start, score_end)
         rv_score = df_all['rv_20d'].iloc[score_indices].values
         y_score = df_all['target_y_next2'].iloc[score_indices].values
-        
-        # Transform features using frozen scalers from tau_m
-        Q_score_raw = df_all[Q_COLS].iloc[score_indices].values
-        X_score_raw = df_all[X_COLS].iloc[score_indices].values
-        Q_score_scaled = scaler_Q.transform(Q_score_raw)
-        X_score_scaled = scaler_X.transform(X_score_raw)
-        QX_score_scaled = np.column_stack([Q_score_scaled, X_score_scaled])
-        
-        pi_score = filtered_pi_all[score_indices]
-        QXpi_score = np.column_stack([QX_score_scaled, pi_score])
+
+        # Transform features using frozen scalers (and optional clip bounds) from tau_m
+        score_inputs = build_scoring_inputs(df_all, refit, score_indices)
+        Q_score_scaled, X_score_scaled = score_inputs['Q'], score_inputs['X']
+        QX_score_scaled, QXpi_score = score_inputs['QX'], score_inputs['QXpi']
         
         # Generate predictions
         # B0
@@ -285,6 +395,10 @@ def run_walk_forward(
                 'score_dates': f"{df_all['date'].iloc[score_start]} to {df_all['date'].iloc[score_end - 1]}",
                 'n_scored': int(score_end - score_start)
             },
+            'n_scoring_feature_values_clipped': int(score_inputs['n_clipped']),
+            'hmm_n_iter': int(hmm.n_iter_),
+            'hmm_converged': bool(hmm.converged_),
+            'hmm_final_log_lik': float(hmm.log_lik_history_[-1]),
             'hmm_transition_matrix': trans.tolist(),
             'hmm_diagonal_probabilities': [float(d) for d in diags],
             'hmm_expected_dwell_times': [float(d) for d in dwells],
@@ -292,7 +406,14 @@ def run_walk_forward(
             'hmm_state_occupancies_train_mean': [float(o) for o in occ_mean],
             'dwell_time_constraint_pass': dwell_pass,
             'occupancy_constraint_pass': occ_pass,
-            'all_constraints_pass': bool(dwell_pass and occ_pass)
+            'all_constraints_pass': bool(dwell_pass and occ_pass),
+            'fit_reports': {
+                'B1': m_b1.fit_report_,
+                'B2': m_b2.fit_report_,
+                'B3': m_b3.fit_report_,
+                'B4': m_b4.fit_report_,
+                'R1': m_r1.fit_report_
+            }
         })
         
     # Evaluate performance on the 494 complete-case validation scoring rows
@@ -311,7 +432,7 @@ def run_walk_forward(
             mu = preds[m]['mu'][val_indices]
             sigma = preds[m]['sigma'][val_indices]
             crps_vals = [gaussian_crps(val_y[i], mu[i], sigma[i]) for i in range(len(val_y))]
-            pit_vals = compute_pit_values_gaussian(val_y, mu[0], sigma[0])
+            pit_vals = compute_pit_values_gaussian(val_y, mu, sigma)
             ks_res = stats.kstest(pit_vals, 'uniform')
             
             # Coverage
@@ -472,5 +593,12 @@ def fit_insample_development(df_dev: pd.DataFrame, lambda_reg: float = 1e-3, K_r
     return {
         'insample_metrics': insample_metrics,
         'dm_test': dm_res,
-        'train_indices': train_indices
+        'train_indices': train_indices,
+        'fit_reports': {
+            'B1': m_b1.fit_report_,
+            'B2': m_b2.fit_report_,
+            'B3': m_b3.fit_report_,
+            'B4': m_b4.fit_report_,
+            'R1': m_r1.fit_report_
+        }
     }
